@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkoutType {
+  RUN_WALK
+  EASY_RUN
+  WALK
+  BIKE
+  STRENGTH
+}
+
+enum BreathingLevel {
+  EASY
+  MEDIUM
+  HARD
+  VERY_HARD
+}
+
+enum PainType {
+  NONE
+  SHIN
+  KNEE
+  ACHILLES
+  FOOT
+  HIP
+  BACK
+  OTHER
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  heightCm     Int               @default(185)
+  goalSpeedKmh Float             @default(12)
+  easyHrMin    Int               @default(130)
+  easyHrMax    Int               @default(150)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  templates    WorkoutTemplate[]
+  sessions     WorkoutSession[]
+}
+
+model WorkoutTemplate {
+  id          String           @id @default(cuid())
+  userId      String?
+  user        User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  level       Int
+  type        WorkoutType
+  warmupSec   Int
+  runSec      Int
+  walkSec     Int
+  repeats     Int
+  cooldownSec Int
+  isDefault   Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  sessions    WorkoutSession[]
+
+  @@index([level])
+  @@index([userId])
+}
+
+model WorkoutSession {
+  id               String          @id @default(cuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId       String?
+  template         WorkoutTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  date             DateTime
+  completed        Boolean         @default(true)
+  totalDurationSec Int
+  totalRunSec      Int
+  totalWalkSec     Int
+  avgHr            Int?
+  maxHr            Int?
+  difficulty       Int
+  breathing        BreathingLevel
+  pain             PainType
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([userId, date])
+  @@index([templateId])
+}

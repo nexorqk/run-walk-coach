@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: run-walk-coach-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: runwalk
+      POSTGRES_PASSWORD: runwalk
+      POSTGRES_DB: runwalk
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U runwalk -d runwalk"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: run-walk-coach-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://runwalk:runwalk@postgres:5432/runwalk?schema=public
+      DEV_USER_EMAIL: runner@example.com
+    ports:
+      - "4000:4000"
+
+volumes:
+  postgres_data:

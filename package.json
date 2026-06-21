@@ -1,0 +1,20 @@
+{
+  "name": "run-walk-coach",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm --filter @run-walk-coach/shared build && concurrently -n api,web -c cyan,green \"pnpm --filter @run-walk-coach/api dev\" \"pnpm --filter @run-walk-coach/web dev\"",
+    "dev:web": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/web dev",
+    "dev:api": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api dev",
+    "build": "pnpm -r --sort build",
+    "lint": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api prisma:generate && pnpm -r --sort lint",
+    "typecheck": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api prisma:generate && pnpm -r --sort typecheck",
+    "db:migrate": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api db:migrate",
+    "db:seed": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  }
+}
