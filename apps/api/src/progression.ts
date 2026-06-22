@@ -15,8 +15,20 @@ function isSuccessfulSession(session: SessionWithTemplate) {
   );
 }
 
-async function getDefaultTemplate(level: number) {
+async function getPreferredTemplate(userId: string, level: number) {
   const normalizedLevel = Math.min(10, Math.max(1, level));
+  const userTemplate = await prisma.workoutTemplate.findFirst({
+    where: {
+      userId,
+      level: normalizedLevel
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  if (userTemplate) {
+    return userTemplate;
+  }
+
   const template = await prisma.workoutTemplate.findFirst({
     where: {
       userId: null,
@@ -36,7 +48,11 @@ function sessionLevel(session: SessionWithTemplate) {
   return session.template?.level ?? 1;
 }
 
-function makeResult(action: ProgressionAction, template: Awaited<ReturnType<typeof getDefaultTemplate>>, reason: string) {
+function makeResult(
+  action: ProgressionAction,
+  template: Awaited<ReturnType<typeof getPreferredTemplate>>,
+  reason: string
+) {
   return { action, template, reason };
 }
 
@@ -51,7 +67,7 @@ export async function getNextWorkoutSuggestion(userId: string) {
   if (recentSessions.length === 0) {
     return makeResult(
       "repeat",
-      await getDefaultTemplate(1),
+      await getPreferredTemplate(userId, 1),
       "Start with Level 1 and keep the effort easy."
     );
   }
@@ -65,7 +81,7 @@ export async function getNextWorkoutSuggestion(userId: string) {
 
     return makeResult(
       action,
-      await getDefaultTemplate(nextLevel),
+      await getPreferredTemplate(userId, nextLevel),
       "Pain was reported in the latest session, so reduce or repeat the load."
     );
   }
@@ -73,7 +89,7 @@ export async function getNextWorkoutSuggestion(userId: string) {
   if (latest.difficulty >= 8) {
     return makeResult(
       "repeat",
-      await getDefaultTemplate(currentLevel),
+      await getPreferredTemplate(userId, currentLevel),
       "The latest session was too hard, so repeat this level."
     );
   }
@@ -81,7 +97,7 @@ export async function getNextWorkoutSuggestion(userId: string) {
   if (latest.breathing === "VERY_HARD") {
     return makeResult(
       "repeat",
-      await getDefaultTemplate(currentLevel),
+      await getPreferredTemplate(userId, currentLevel),
       "Breathing load was too high, so repeat this level."
     );
   }
@@ -89,7 +105,7 @@ export async function getNextWorkoutSuggestion(userId: string) {
   if (latest.maxHr !== null && latest.maxHr >= 170) {
     return makeResult(
       "repeat",
-      await getDefaultTemplate(currentLevel),
+      await getPreferredTemplate(userId, currentLevel),
       "Heart rate was too high, so repeat this level."
     );
   }
@@ -103,21 +119,21 @@ export async function getNextWorkoutSuggestion(userId: string) {
     if (currentLevel >= 10) {
       return makeResult(
         "repeat",
-        await getDefaultTemplate(10),
+        await getPreferredTemplate(userId, 10),
         "You are already at Level 10; keep the easy run controlled."
       );
     }
 
     return makeResult(
       "progress",
-      await getDefaultTemplate(currentLevel + 1),
+      await getPreferredTemplate(userId, currentLevel + 1),
       "Two successful sessions in a row at the current level are complete."
     );
   }
 
   return makeResult(
     "repeat",
-    await getDefaultTemplate(currentLevel),
+    await getPreferredTemplate(userId, currentLevel),
     "Repeat this level until two controlled sessions are completed in a row."
   );
 }

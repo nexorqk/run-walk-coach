@@ -35,7 +35,7 @@ export const ProgressionActionSchema = z.enum(progressionActionValues);
 
 export const UserProfileSchema = z.object({
   id: z.string(),
-  email: z.string().email(),
+  email: z.string().email().nullable(),
   heightCm: z.number().int().positive(),
   goalSpeedKmh: z.number().positive(),
   easyHrMin: z.number().int().positive(),
@@ -46,7 +46,7 @@ export const UserProfileSchema = z.object({
 
 export const UpdateUserProfileSchema = z
   .object({
-    email: z.string().email().optional(),
+    email: z.string().email().nullable().optional(),
     heightCm: z.number().int().min(100).max(230).optional(),
     goalSpeedKmh: z.number().min(3).max(25).optional(),
     easyHrMin: z.number().int().min(60).max(220).optional(),
@@ -78,7 +78,35 @@ export const WorkoutTemplateSchema = z.object({
   createdAt: z.string()
 });
 
+export const UpdateWorkoutTemplateSchema = z
+  .object({
+    warmupSec: z.number().int().min(0).max(3600).optional(),
+    runSec: z.number().int().min(1).max(3600).optional(),
+    walkSec: z.number().int().min(0).max(3600).optional(),
+    cooldownSec: z.number().int().min(0).max(3600).optional()
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one workout timing field is required"
+  });
+
+export const CreateRecoveryCodeResponseSchema = z.object({
+  recoveryCode: z.string(),
+  createdAt: z.string()
+});
+
+export const RecoveryCodeStatusSchema = z.object({
+  exists: z.boolean(),
+  createdAt: z.string().nullable(),
+  lastUsedAt: z.string().nullable(),
+  revokedAt: z.string().nullable()
+});
+
+export const RecoverWithCodeSchema = z.object({
+  recoveryCode: z.string().trim().min(8).max(64)
+});
+
 export const CreateWorkoutSessionSchema = z.object({
+  clientSessionId: z.string().uuid().nullable().optional(),
   templateId: z.string().nullable().optional(),
   date: z.string().datetime().optional(),
   completed: z.boolean().default(true),
@@ -126,6 +154,10 @@ export type ProgressionAction = z.infer<typeof ProgressionActionSchema>;
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 export type UpdateUserProfile = z.infer<typeof UpdateUserProfileSchema>;
 export type WorkoutTemplate = z.infer<typeof WorkoutTemplateSchema>;
+export type UpdateWorkoutTemplate = z.infer<typeof UpdateWorkoutTemplateSchema>;
+export type CreateRecoveryCodeResponse = z.infer<typeof CreateRecoveryCodeResponseSchema>;
+export type RecoveryCodeStatus = z.infer<typeof RecoveryCodeStatusSchema>;
+export type RecoverWithCode = z.infer<typeof RecoverWithCodeSchema>;
 export type CreateWorkoutSession = z.infer<typeof CreateWorkoutSessionSchema>;
 export type WorkoutSession = z.infer<typeof WorkoutSessionSchema>;
 export type ProgressionResponse = z.infer<typeof ProgressionResponseSchema>;

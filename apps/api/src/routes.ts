@@ -1,9 +1,20 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   CreateWorkoutSessionSchema,
-  UpdateUserProfileSchema
+  RecoverWithCodeSchema,
+  UpdateUserProfileSchema,
+  UpdateWorkoutTemplateSchema
 } from "@run-walk-coach/shared";
-import { ensureDevUser } from "./bootstrap.js";
+import {
+  createRecoveryCode,
+  deleteCurrentUser,
+  getOrCreateCurrentUser,
+  logoutCurrentSession,
+  recoverUserWithCode,
+  recoveryCodeStatus,
+  revokeRecoveryCode
+} from "./auth.js";
+import { env } from "./env.js";
 import { getNextWorkoutSuggestion } from "./progression.js";
 import { prisma } from "./prisma.js";
 
@@ -22,13 +33,122 @@ function startOfWeek(date: Date) {
   return start;
 }
 
+function formatTemplateSeconds(seconds: number) {
+  if (seconds >= 60 && seconds % 60 === 0) {
+    const minutes = seconds / 60;
+    return `${minutes} min`;
+  }
+
+  return `${seconds} sec`;
+}
+
+function templateName(level: number, type: string, runSec: number, walkSec: number) {
+  if (type === "WALK") {
+    return `Level ${level} - ${formatTemplateSeconds(walkSec || runSec)} walk`;
+  }
+
+  if (type === "EASY_RUN") {
+    return `Level ${level} - ${formatTemplateSeconds(runSec)} easy run`;
+  }
+
+  if (walkSec === 0) {
+    return `Level ${level} - ${formatTemplateSeconds(runSec)} run`;
+  }
+
+  return `Level ${level} - ${formatTemplateSeconds(runSec)} run / ${formatTemplateSeconds(walkSec)} walk`;
+}
+
 export async function registerRoutes(app: FastifyInstance) {
+  app.get("/api/health/live", async () => ({
+    ok: true,
+    service: "run-walk-coach-api"
+  }));
+
+  app.get("/api/health/ready", async () => {
+    await prisma.$queryRaw`SELECT 1`;
+
+    return {
+      ok: true,
+      service: "run-walk-coach-api",
+      database: "ready"
+    };
+  });
+
   app.get("/api/health", async () => ({
     ok: true,
     service: "run-walk-coach-api"
   }));
 
-  app.get("/api/profile", async () => ensureDevUser());
+  app.get("/api/metrics", async () => ({
+    uptimeSec: Math.floor(process.uptime()),
+    memory: process.memoryUsage(),
+    nodeEnv: env.nodeEnv
+  }));
+
+  app.get("/api/profile", async (request, reply) => getOrCreateCurrentUser(request, reply));
+
+  app.delete("/api/profile", async (request, reply) => {
+    await deleteCurrentUser(request, reply);
+    return reply.status(204).send();
+  });
+
+  app.post(
+    "/api/auth/recovery-code",
+    {
+      config: {
+        rateLimit: {
+          max: env.authRateLimitMax,
+          timeWindow: env.authRateLimitWindowMs
+        }
+      }
+    },
+    async (request, reply) => {
+      const user = await getOrCreateCurrentUser(request, reply);
+      return createRecoveryCode(user.id);
+    }
+  );
+
+  app.get("/api/auth/recovery-code", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
+    return recoveryCodeStatus(user.id);
+  });
+
+  app.delete("/api/auth/recovery-code", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
+    return revokeRecoveryCode(user.id);
+  });
+
+  app.post(
+    "/api/auth/recover",
+    {
+      config: {
+        rateLimit: {
+          max: env.authRateLimitMax,
+          timeWindow: env.authRateLimitWindowMs
+        }
+      }
+    },
+    async (request, reply) => {
+      const parsed = RecoverWithCodeSchema.safeParse(request.body);
+
+      if (!parsed.success) {
+        return validationError(reply, parsed.error.issues);
+      }
+
+      const user = await recoverUserWithCode(parsed.data.recoveryCode, reply);
+
+      if (!user) {
+        return reply.status(400).send({ error: "InvalidRecoveryCode" });
+      }
+
+      return user;
+    }
+  );
+
+  app.post("/api/auth/logout", async (request, reply) => {
+    await logoutCurrentSession(request, reply);
+    return reply.status(204).send();
+  });
 
   app.patch("/api/profile", async (request, reply) => {
     const parsed = UpdateUserProfileSchema.safeParse(request.body);
@@ -37,7 +157,7 @@ export async function registerRoutes(app: FastifyInstance) {
       return validationError(reply, parsed.error.issues);
     }
 
-    const user = await ensureDevUser();
+    const user = await getOrCreateCurrentUser(request, reply);
     const nextEasyHrMin = parsed.data.easyHrMin ?? user.easyHrMin;
     const nextEasyHrMax = parsed.data.easyHrMax ?? user.easyHrMax;
 
@@ -56,25 +176,94 @@ export async function registerRoutes(app: FastifyInstance) {
     });
   });
 
-  app.get("/api/workout-templates", async () =>
-    prisma.workoutTemplate.findMany({
-      orderBy: [{ level: "asc" }, { createdAt: "asc" }]
-    })
-  );
+  app.get("/api/workout-templates", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
 
-  app.get("/api/workout-templates/current", async () => {
-    const user = await ensureDevUser();
+    return prisma.workoutTemplate.findMany({
+      where: {
+        OR: [{ userId: null }, { userId: user.id }]
+      },
+      orderBy: [{ level: "asc" }, { createdAt: "asc" }]
+    });
+  });
+
+  app.get("/api/workout-templates/current", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
     const suggestion = await getNextWorkoutSuggestion(user.id);
     return suggestion.template;
   });
 
-  app.get("/api/progression/next", async () => {
-    const user = await ensureDevUser();
+  app.patch<{ Params: { id: string } }>("/api/workout-templates/:id", async (request, reply) => {
+    const parsed = UpdateWorkoutTemplateSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return validationError(reply, parsed.error.issues);
+    }
+
+    const user = await getOrCreateCurrentUser(request, reply);
+    const template = await prisma.workoutTemplate.findFirst({
+      where: {
+        id: request.params.id,
+        OR: [{ userId: null }, { userId: user.id }]
+      }
+    });
+
+    if (!template) {
+      return reply.status(404).send({ error: "WorkoutTemplateNotFound" });
+    }
+
+    const timing = {
+      warmupSec: parsed.data.warmupSec ?? template.warmupSec,
+      runSec: parsed.data.runSec ?? template.runSec,
+      walkSec: parsed.data.walkSec ?? template.walkSec,
+      cooldownSec: parsed.data.cooldownSec ?? template.cooldownSec
+    };
+    const data = {
+      ...timing,
+      name: templateName(template.level, template.type, timing.runSec, timing.walkSec)
+    };
+
+    if (template.userId === user.id) {
+      return prisma.workoutTemplate.update({
+        where: { id: template.id },
+        data
+      });
+    }
+
+    const existingOverride = await prisma.workoutTemplate.findFirst({
+      where: {
+        userId: user.id,
+        level: template.level
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    if (existingOverride) {
+      return prisma.workoutTemplate.update({
+        where: { id: existingOverride.id },
+        data
+      });
+    }
+
+    return prisma.workoutTemplate.create({
+      data: {
+        userId: user.id,
+        level: template.level,
+        type: template.type,
+        repeats: template.repeats,
+        isDefault: false,
+        ...data
+      }
+    });
+  });
+
+  app.get("/api/progression/next", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
     return getNextWorkoutSuggestion(user.id);
   });
 
-  app.get("/api/sessions", async () => {
-    const user = await ensureDevUser();
+  app.get("/api/sessions", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
     return prisma.workoutSession.findMany({
       where: { userId: user.id },
       include: { template: true },
@@ -89,8 +278,9 @@ export async function registerRoutes(app: FastifyInstance) {
       return validationError(reply, parsed.error.issues);
     }
 
-    const user = await ensureDevUser();
+    const user = await getOrCreateCurrentUser(request, reply);
     const templateId = parsed.data.templateId ?? null;
+    const clientSessionId = parsed.data.clientSessionId ?? null;
 
     if (templateId) {
       const template = await prisma.workoutTemplate.findFirst({
@@ -105,9 +295,26 @@ export async function registerRoutes(app: FastifyInstance) {
       }
     }
 
+    if (clientSessionId) {
+      const existing = await prisma.workoutSession.findUnique({
+        where: {
+          userId_clientSessionId: {
+            userId: user.id,
+            clientSessionId
+          }
+        },
+        include: { template: true }
+      });
+
+      if (existing) {
+        return existing;
+      }
+    }
+
     const session = await prisma.workoutSession.create({
       data: {
         userId: user.id,
+        clientSessionId,
         templateId,
         date: parsed.data.date ? new Date(parsed.data.date) : new Date(),
         completed: parsed.data.completed,
@@ -128,7 +335,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>("/api/sessions/:id", async (request, reply) => {
-    const user = await ensureDevUser();
+    const user = await getOrCreateCurrentUser(request, reply);
     const session = await prisma.workoutSession.findFirst({
       where: {
         id: request.params.id,
@@ -145,7 +352,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string } }>("/api/sessions/:id", async (request, reply) => {
-    const user = await ensureDevUser();
+    const user = await getOrCreateCurrentUser(request, reply);
     const session = await prisma.workoutSession.findFirst({
       where: {
         id: request.params.id,
@@ -164,8 +371,8 @@ export async function registerRoutes(app: FastifyInstance) {
     return reply.status(204).send();
   });
 
-  app.get("/api/analytics/summary", async () => {
-    const user = await ensureDevUser();
+  app.get("/api/analytics/summary", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
     const weekStart = startOfWeek(new Date());
     const sessionsThisWeek = await prisma.workoutSession.findMany({
       where: {
@@ -206,8 +413,8 @@ export async function registerRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get("/api/export/json", async () => {
-    const user = await ensureDevUser();
+  app.get("/api/export/json", async (request, reply) => {
+    const user = await getOrCreateCurrentUser(request, reply);
     const [templates, sessions] = await Promise.all([
       prisma.workoutTemplate.findMany({
         where: {

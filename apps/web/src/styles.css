@@ -183,6 +183,7 @@ h2 {
 }
 
 .primary-action,
+.secondary-action,
 .control-button,
 .icon-button,
 .difficulty {
@@ -208,6 +209,29 @@ h2 {
 .primary-action:disabled {
   cursor: wait;
   opacity: 0.68;
+}
+
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  background: var(--surface-strong);
+  color: var(--text);
+  font-weight: 900;
+}
+
+.secondary-action:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.secondary-action.danger {
+  background: var(--danger);
+  color: #170c0c;
 }
 
 .icon-button {
@@ -439,6 +463,12 @@ h2 {
 }
 
 .form-section {
+  display: grid;
+  gap: 12px;
+}
+
+.form-grid,
+.section-heading {
   display: grid;
   gap: 12px;
 }

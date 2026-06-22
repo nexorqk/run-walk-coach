@@ -10,11 +10,13 @@
     "build": "pnpm -r --sort build",
     "lint": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api prisma:generate && pnpm -r --sort lint",
     "typecheck": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api prisma:generate && pnpm -r --sort typecheck",
+    "test": "vitest run",
     "db:migrate": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api db:migrate",
     "db:seed": "pnpm --filter @run-walk-coach/shared build && pnpm --filter @run-walk-coach/api db:seed"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.9"
   }
 }

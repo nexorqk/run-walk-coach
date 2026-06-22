@@ -12,6 +12,7 @@ function remoteTemplateId(templateId: string | null | undefined) {
 
 function toCreatePayload(session: LocalWorkoutSession): CreateWorkoutSession {
   return {
+    clientSessionId: session.localId,
     templateId: remoteTemplateId(session.templateId),
     date: session.date,
     completed: session.completed,

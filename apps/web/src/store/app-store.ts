@@ -69,15 +69,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const fallbackProfile: UserProfile = {
       id: "local-user",
-      email: "runner@example.com",
+      email: null,
       ...DEFAULT_USER_PROFILE,
       createdAt: new Date(0).toISOString(),
       updatedAt: new Date(0).toISOString()
     };
 
     try {
-      const [profile, templates, recommendation] = await Promise.all([
-        getProfile(),
+      const profile = await getProfile();
+      const [templates, recommendation] = await Promise.all([
         getWorkoutTemplates(),
         getNextProgression()
       ]);

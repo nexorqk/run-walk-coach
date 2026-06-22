@@ -5,7 +5,7 @@ import {
   Settings,
   TimerReset
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AnalyticsPage } from "./pages/AnalyticsPage.js";
 import { HistoryPage } from "./pages/HistoryPage.js";
@@ -43,10 +43,23 @@ export function App() {
   const location = useLocation();
   const loadInitialData = useAppStore((state) => state.loadInitialData);
   const isWorkout = location.pathname.startsWith("/workout");
+  const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
 
   useEffect(() => {
-    void retryPendingSessions();
-    void loadInitialData();
+    let isMounted = true;
+
+    void loadInitialData()
+      .then(() => retryPendingSessions())
+      .catch(() => undefined)
+      .finally(() => {
+        if (isMounted) {
+          setHasLoadedInitialData(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [loadInitialData]);
 
   if (isWorkout) {
@@ -69,15 +82,22 @@ export function App() {
       </header>
 
       <main className="page">
-        <Routes>
-          <Route path="/" element={<Navigate to="/today" replace />} />
-          <Route path="/today" element={<TodayPage />} />
-          <Route path="/session-report" element={<SessionReportPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
-          <Route path="*" element={<Navigate to="/today" replace />} />
-        </Routes>
+        {hasLoadedInitialData ? (
+          <Routes>
+            <Route path="/" element={<Navigate to="/today" replace />} />
+            <Route path="/today" element={<TodayPage />} />
+            <Route path="/session-report" element={<SessionReportPage />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="*" element={<Navigate to="/today" replace />} />
+          </Routes>
+        ) : (
+          <section className="empty-state">
+            <div className="loader" />
+            <p>Loading...</p>
+          </section>
+        )}
       </main>
 
       <BottomNav />

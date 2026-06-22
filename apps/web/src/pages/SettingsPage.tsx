@@ -1,16 +1,53 @@
-import { Save } from "lucide-react";
+import { buildWorkoutTimeline, formatTime, type RecoveryCodeStatus } from "@run-walk-coach/shared";
+import { KeyRound, Save, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
-import { updateProfile } from "../api/client.js";
+import {
+  createRecoveryCode,
+  deleteProfile,
+  getRecoveryCodeStatus,
+  recoverWithCode,
+  revokeRecoveryCode,
+  updateProfile,
+  updateWorkoutTemplate
+} from "../api/client.js";
+import { db } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
 
 export function SettingsPage() {
   const profile = useAppStore((state) => state.profile);
+  const recommendation = useAppStore((state) => state.recommendation);
   const loadInitialData = useAppStore((state) => state.loadInitialData);
+  const setWorkoutDraft = useAppStore((state) => state.setWorkoutDraft);
   const [heightCm, setHeightCm] = useState(185);
   const [goalSpeedKmh, setGoalSpeedKmh] = useState(12);
   const [easyHrMin, setEasyHrMin] = useState(130);
   const [easyHrMax, setEasyHrMax] = useState(150);
+  const [warmupSec, setWarmupSec] = useState(600);
+  const [runSec, setRunSec] = useState(30);
+  const [walkSec, setWalkSec] = useState(90);
+  const [cooldownSec, setCooldownSec] = useState(300);
   const [status, setStatus] = useState("");
+  const [recoveryStatus, setRecoveryStatus] = useState("");
+  const [recoveryCodeStatus, setRecoveryCodeStatus] = useState<RecoveryCodeStatus>();
+  const [recoveryCode, setRecoveryCode] = useState("");
+  const [recoverInput, setRecoverInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isCreatingRecoveryCode, setIsCreatingRecoveryCode] = useState(false);
+  const [isRecovering, setIsRecovering] = useState(false);
+  const [isDeletingProfile, setIsDeletingProfile] = useState(false);
+  const currentTemplate = recommendation?.template;
+  const editedTemplate = currentTemplate
+    ? {
+        ...currentTemplate,
+        warmupSec,
+        runSec,
+        walkSec,
+        cooldownSec
+      }
+    : undefined;
+  const totalDurationSec = editedTemplate
+    ? buildWorkoutTimeline(editedTemplate).totalDurationSec
+    : undefined;
 
   useEffect(() => {
     if (profile) {
@@ -21,21 +58,133 @@ export function SettingsPage() {
     }
   }, [profile]);
 
+  useEffect(() => {
+    if (currentTemplate) {
+      setWarmupSec(currentTemplate.warmupSec);
+      setRunSec(currentTemplate.runSec);
+      setWalkSec(currentTemplate.walkSec);
+      setCooldownSec(currentTemplate.cooldownSec);
+    }
+  }, [currentTemplate]);
+
+  useEffect(() => {
+    void getRecoveryCodeStatus()
+      .then(setRecoveryCodeStatus)
+      .catch(() => undefined);
+  }, [profile?.id]);
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatus("Saving...");
+    setIsSaving(true);
 
     try {
-      await updateProfile({
-        heightCm,
-        goalSpeedKmh,
-        easyHrMin,
-        easyHrMax
-      });
+      const updates: Promise<unknown>[] = [
+        updateProfile({
+          heightCm,
+          goalSpeedKmh,
+          easyHrMin,
+          easyHrMax
+        })
+      ];
+
+      if (currentTemplate) {
+        updates.push(
+          updateWorkoutTemplate(currentTemplate.id, {
+            warmupSec,
+            runSec,
+            walkSec,
+            cooldownSec
+          })
+        );
+      }
+
+      await Promise.all(updates);
       await loadInitialData();
       setStatus("Saved");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not save settings");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const createCode = async () => {
+    setIsCreatingRecoveryCode(true);
+    setRecoveryStatus("Creating...");
+
+    try {
+      const response = await createRecoveryCode();
+      setRecoveryCode(response.recoveryCode);
+      setRecoveryCodeStatus({
+        exists: true,
+        createdAt: response.createdAt,
+        lastUsedAt: null,
+        revokedAt: null
+      });
+      setRecoveryStatus("Recovery code created");
+    } catch (error) {
+      setRecoveryStatus(error instanceof Error ? error.message : "Could not create recovery code");
+    } finally {
+      setIsCreatingRecoveryCode(false);
+    }
+  };
+
+  const revokeCode = async () => {
+    setRecoveryStatus("Revoking...");
+
+    try {
+      setRecoveryCodeStatus(await revokeRecoveryCode());
+      setRecoveryCode("");
+      setRecoveryStatus("Recovery code revoked");
+    } catch (error) {
+      setRecoveryStatus(error instanceof Error ? error.message : "Could not revoke recovery code");
+    }
+  };
+
+  const recover = async () => {
+    setIsRecovering(true);
+    setRecoveryStatus("Recovering...");
+
+    try {
+      await recoverWithCode({ recoveryCode: recoverInput });
+      await loadInitialData();
+      setRecoverInput("");
+      setRecoveryCode("");
+      setRecoveryCodeStatus(await getRecoveryCodeStatus());
+      setRecoveryStatus("Progress restored");
+    } catch (error) {
+      setRecoveryStatus(error instanceof Error ? error.message : "Could not restore progress");
+    } finally {
+      setIsRecovering(false);
+    }
+  };
+
+  const deleteProgress = async () => {
+    const confirmed = window.confirm(
+      "Delete all server and local progress for this user? This cannot be undone without a recovery code for another account."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeletingProfile(true);
+    setRecoveryStatus("Deleting...");
+
+    try {
+      await deleteProfile();
+      await db.sessions.clear();
+      setWorkoutDraft(undefined);
+      setRecoveryCode("");
+      setRecoverInput("");
+      setRecoveryCodeStatus(undefined);
+      await loadInitialData();
+      setRecoveryStatus("Progress deleted");
+    } catch (error) {
+      setRecoveryStatus(error instanceof Error ? error.message : "Could not delete progress");
+    } finally {
+      setIsDeletingProfile(false);
     }
   };
 
@@ -44,7 +193,7 @@ export function SettingsPage() {
       <section className="panel">
         <div className="eyebrow">Settings</div>
         <h1>Profile</h1>
-        <p className="muted">{profile?.email ?? "runner@example.com"}</p>
+        <p className="muted">{profile?.email ?? "Anonymous runner"}</p>
       </section>
 
       <section className="form-section two-column">
@@ -98,9 +247,164 @@ export function SettingsPage() {
         </label>
       </section>
 
-      <button className="primary-action" type="submit">
+      <section className="form-section">
+        <div className="section-heading">
+          <h2>Workout timing</h2>
+          <p className="muted">{currentTemplate?.name ?? "Loading workout"}</p>
+        </div>
+
+        <div className="form-grid two-column">
+          <label>
+            <span className="field-label">Warmup, sec</span>
+            <input
+              inputMode="numeric"
+              type="number"
+              min="0"
+              max="3600"
+              step="15"
+              required
+              value={warmupSec}
+              onChange={(event) => setWarmupSec(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            <span className="field-label">Run, sec</span>
+            <input
+              inputMode="numeric"
+              type="number"
+              min="1"
+              max="3600"
+              step="5"
+              required
+              value={runSec}
+              onChange={(event) => setRunSec(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            <span className="field-label">Walk, sec</span>
+            <input
+              inputMode="numeric"
+              type="number"
+              min="0"
+              max="3600"
+              step="5"
+              required
+              value={walkSec}
+              onChange={(event) => setWalkSec(Number(event.target.value))}
+            />
+          </label>
+          <label>
+            <span className="field-label">Cooldown, sec</span>
+            <input
+              inputMode="numeric"
+              type="number"
+              min="0"
+              max="3600"
+              step="15"
+              required
+              value={cooldownSec}
+              onChange={(event) => setCooldownSec(Number(event.target.value))}
+            />
+          </label>
+        </div>
+
+        {totalDurationSec !== undefined ? (
+          <p className="muted">Total time: {formatTime(totalDurationSec)}</p>
+        ) : null}
+      </section>
+
+      <section className="form-section">
+        <div className="section-heading">
+          <h2>Recovery</h2>
+          <p className="muted">{profile ? `User ${profile.id.slice(0, 8)}` : "Anonymous session"}</p>
+        </div>
+
+        <p className="muted">
+          Recovery code: {recoveryCodeStatus?.exists ? "Active" : "Not created"}
+          {recoveryCodeStatus?.lastUsedAt ? `, last used ${new Date(recoveryCodeStatus.lastUsedAt).toLocaleString()}` : ""}
+        </p>
+
+        <button
+          className="secondary-action"
+          type="button"
+          disabled={isCreatingRecoveryCode}
+          onClick={() => void createCode()}
+        >
+          <KeyRound aria-hidden="true" size={23} />
+          {isCreatingRecoveryCode
+            ? "Creating..."
+            : recoveryCodeStatus?.exists
+              ? "Rotate recovery code"
+              : "Create recovery code"}
+        </button>
+
+        {recoveryCode ? (
+          <label>
+            <span className="field-label">Recovery code</span>
+            <input readOnly value={recoveryCode} />
+          </label>
+        ) : null}
+
+        {recoveryCodeStatus?.exists ? (
+          <button className="secondary-action" type="button" onClick={() => void revokeCode()}>
+            <KeyRound aria-hidden="true" size={23} />
+            Revoke recovery code
+          </button>
+        ) : null}
+
+        <label>
+          <span className="field-label">Restore with code</span>
+          <input
+            autoComplete="one-time-code"
+            value={recoverInput}
+            onChange={(event) => setRecoverInput(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && recoverInput.trim().length > 0) {
+                event.preventDefault();
+                void recover();
+              }
+            }}
+            placeholder="RW-..."
+          />
+        </label>
+
+        <button
+          className="secondary-action"
+          type="button"
+          disabled={isRecovering || recoverInput.trim().length === 0}
+          onClick={() => void recover()}
+        >
+          <KeyRound aria-hidden="true" size={23} />
+          {isRecovering ? "Restoring..." : "Restore progress"}
+        </button>
+
+        {recoveryStatus ? <p className="muted">{recoveryStatus}</p> : null}
+      </section>
+
+      <section className="form-section">
+        <div className="section-heading">
+          <h2>Privacy</h2>
+          <p className="muted">
+            <a className="inline-link" href="/privacy.html">
+              Privacy policy
+            </a>
+          </p>
+        </div>
+
+        <button
+          className="secondary-action danger"
+          type="button"
+          disabled={isDeletingProfile}
+          onClick={() => void deleteProgress()}
+        >
+          <Trash2 aria-hidden="true" size={23} />
+          {isDeletingProfile ? "Deleting..." : "Delete progress"}
+        </button>
+      </section>
+
+      <button className="primary-action" type="submit" disabled={isSaving}>
         <Save aria-hidden="true" size={26} />
-        Save profile
+        Save settings
       </button>
 
       {status ? <p className="muted">{status}</p> : null}

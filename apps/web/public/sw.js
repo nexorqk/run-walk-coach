@@ -1,8 +1,9 @@
-const CACHE_NAME = "runwalk-coach-v1";
+const CACHE_NAME = "runwalk-coach-v2";
 const CORE_ASSETS = [
   "/",
   "/today",
   "/index.html",
+  "/privacy.html",
   "/manifest.webmanifest",
   "/icon.svg",
   "/icon-192.png",
@@ -31,6 +32,19 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (request.method !== "GET" || url.pathname.startsWith("/api")) {
+    return;
+  }
+
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+          return response;
+        })
+        .catch(() => caches.match("/index.html"))
+    );
     return;
   }
 

@@ -1,17 +1,5 @@
-import { DEFAULT_USER_PROFILE, DEFAULT_WORKOUT_TEMPLATES } from "@run-walk-coach/shared";
-import { env } from "./env.js";
+import { DEFAULT_WORKOUT_TEMPLATES } from "@run-walk-coach/shared";
 import { prisma } from "./prisma.js";
-
-export async function ensureDevUser() {
-  return prisma.user.upsert({
-    where: { email: env.devUserEmail },
-    update: {},
-    create: {
-      email: env.devUserEmail,
-      ...DEFAULT_USER_PROFILE
-    }
-  });
-}
 
 export async function ensureDefaultTemplates() {
   for (const template of DEFAULT_WORKOUT_TEMPLATES) {
@@ -48,6 +36,5 @@ export async function ensureDefaultTemplates() {
 }
 
 export async function bootstrapData() {
-  await ensureDevUser();
   await ensureDefaultTemplates();
 }

@@ -1,20 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import { DEFAULT_USER_PROFILE, DEFAULT_WORKOUT_TEMPLATES } from "@run-walk-coach/shared";
+import { DEFAULT_WORKOUT_TEMPLATES } from "@run-walk-coach/shared";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.DEV_USER_EMAIL ?? "runner@example.com";
-
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: {
-      email,
-      ...DEFAULT_USER_PROFILE
-    }
-  });
-
   for (const template of DEFAULT_WORKOUT_TEMPLATES) {
     const existing = await prisma.workoutTemplate.findFirst({
       where: {
@@ -47,7 +36,7 @@ async function main() {
     }
   }
 
-  console.log(`Seeded ${email} (${user.id}) and ${DEFAULT_WORKOUT_TEMPLATES.length} templates.`);
+  console.log(`Seeded ${DEFAULT_WORKOUT_TEMPLATES.length} templates.`);
 }
 
 main()
