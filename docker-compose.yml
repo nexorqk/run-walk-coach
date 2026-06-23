@@ -5,10 +5,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: runwalk
-      POSTGRES_PASSWORD: runwalk
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
       POSTGRES_DB: runwalk
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -32,9 +32,9 @@ services:
       NODE_ENV: production
       PORT: 4000
       HOST: 0.0.0.0
-      DATABASE_URL: postgresql://runwalk:runwalk@postgres:5432/runwalk?schema=public
+      DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
       SESSION_COOKIE_NAME: rwc_session
-      CORS_ORIGIN: http://localhost:5173
+      CORS_ORIGIN: "${CORS_ORIGIN:-https://run.storycraftbooks.com}"
     ports:
       - "4000:4000"
 
@@ -48,8 +48,8 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://runwalk:runwalk@postgres:5432/runwalk?schema=public
-      CORS_ORIGIN: http://localhost:5173
+      DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
+      CORS_ORIGIN: "${CORS_ORIGIN:-https://run.storycraftbooks.com}"
     command: ["pnpm", "--filter", "@run-walk-coach/api", "db:deploy"]
     restart: "no"
 
