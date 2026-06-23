@@ -1,5 +1,5 @@
 import { buildWorkoutTimeline, formatTime, type RecoveryCodeStatus } from "@run-walk-coach/shared";
-import { KeyRound, Save, Trash2 } from "lucide-react";
+import { Download, KeyRound, Save, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import {
   createRecoveryCode,
@@ -22,10 +22,10 @@ export function SettingsPage() {
   const [goalSpeedKmh, setGoalSpeedKmh] = useState(12);
   const [easyHrMin, setEasyHrMin] = useState(130);
   const [easyHrMax, setEasyHrMax] = useState(150);
-  const [warmupSec, setWarmupSec] = useState(600);
-  const [runSec, setRunSec] = useState(30);
-  const [walkSec, setWalkSec] = useState(90);
-  const [cooldownSec, setCooldownSec] = useState(300);
+  const [warmupSec, setWarmupSec] = useState("600");
+  const [runSec, setRunSec] = useState("30");
+  const [walkSec, setWalkSec] = useState("90");
+  const [cooldownSec, setCooldownSec] = useState("300");
   const [status, setStatus] = useState("");
   const [recoveryStatus, setRecoveryStatus] = useState("");
   const [recoveryCodeStatus, setRecoveryCodeStatus] = useState<RecoveryCodeStatus>();
@@ -36,16 +36,29 @@ export function SettingsPage() {
   const [isRecovering, setIsRecovering] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const currentTemplate = recommendation?.template;
+  const parsedWarmupSec = Number(warmupSec);
+  const parsedRunSec = Number(runSec);
+  const parsedWalkSec = Number(walkSec);
+  const parsedCooldownSec = Number(cooldownSec);
+  const hasValidTiming =
+    warmupSec.trim() !== "" &&
+    runSec.trim() !== "" &&
+    walkSec.trim() !== "" &&
+    cooldownSec.trim() !== "" &&
+    Number.isFinite(parsedWarmupSec) &&
+    Number.isFinite(parsedRunSec) &&
+    Number.isFinite(parsedWalkSec) &&
+    Number.isFinite(parsedCooldownSec);
   const editedTemplate = currentTemplate
     ? {
         ...currentTemplate,
-        warmupSec,
-        runSec,
-        walkSec,
-        cooldownSec
+        warmupSec: hasValidTiming ? parsedWarmupSec : currentTemplate.warmupSec,
+        runSec: hasValidTiming ? parsedRunSec : currentTemplate.runSec,
+        walkSec: hasValidTiming ? parsedWalkSec : currentTemplate.walkSec,
+        cooldownSec: hasValidTiming ? parsedCooldownSec : currentTemplate.cooldownSec
       }
     : undefined;
-  const totalDurationSec = editedTemplate
+  const totalDurationSec = editedTemplate && hasValidTiming
     ? buildWorkoutTimeline(editedTemplate).totalDurationSec
     : undefined;
 
@@ -60,10 +73,10 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (currentTemplate) {
-      setWarmupSec(currentTemplate.warmupSec);
-      setRunSec(currentTemplate.runSec);
-      setWalkSec(currentTemplate.walkSec);
-      setCooldownSec(currentTemplate.cooldownSec);
+      setWarmupSec(String(currentTemplate.warmupSec));
+      setRunSec(String(currentTemplate.runSec));
+      setWalkSec(String(currentTemplate.walkSec));
+      setCooldownSec(String(currentTemplate.cooldownSec));
     }
   }, [currentTemplate]);
 
@@ -91,10 +104,10 @@ export function SettingsPage() {
       if (currentTemplate) {
         updates.push(
           updateWorkoutTemplate(currentTemplate.id, {
-            warmupSec,
-            runSec,
-            walkSec,
-            cooldownSec
+            warmupSec: parsedWarmupSec,
+            runSec: parsedRunSec,
+            walkSec: parsedWalkSec,
+            cooldownSec: parsedCooldownSec
           })
         );
       }
@@ -107,6 +120,14 @@ export function SettingsPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const normalizeTimingInput = (value: string, setter: (value: string) => void) => {
+    if (value.trim() === "") {
+      return;
+    }
+
+    setter(String(Number(value)));
   };
 
   const createCode = async () => {
@@ -140,6 +161,31 @@ export function SettingsPage() {
     } catch (error) {
       setRecoveryStatus(error instanceof Error ? error.message : "Could not revoke recovery code");
     }
+  };
+
+  const downloadCode = () => {
+    const createdAt = recoveryCodeStatus?.createdAt ?? new Date().toISOString();
+    const contents = [
+      "RunWalk Coach recovery code",
+      "",
+      `Recovery code: ${recoveryCode}`,
+      `User: ${profile?.id ?? "unknown"}`,
+      `Created: ${createdAt}`,
+      "",
+      "Keep this code private. Anyone with this code can restore this profile.",
+      "The server stores only a hash of this code, so it cannot be shown again later."
+    ].join("\n");
+    const blob = new Blob([contents], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `runwalk-recovery-${new Date(createdAt).toISOString().slice(0, 10)}.txt`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setRecoveryStatus("Recovery code downloaded");
   };
 
   const recover = async () => {
@@ -261,10 +307,11 @@ export function SettingsPage() {
               type="number"
               min="0"
               max="3600"
-              step="15"
+              step="1"
               required
               value={warmupSec}
-              onChange={(event) => setWarmupSec(Number(event.target.value))}
+              onBlur={() => normalizeTimingInput(warmupSec, setWarmupSec)}
+              onChange={(event) => setWarmupSec(event.target.value)}
             />
           </label>
           <label>
@@ -274,10 +321,11 @@ export function SettingsPage() {
               type="number"
               min="1"
               max="3600"
-              step="5"
+              step="1"
               required
               value={runSec}
-              onChange={(event) => setRunSec(Number(event.target.value))}
+              onBlur={() => normalizeTimingInput(runSec, setRunSec)}
+              onChange={(event) => setRunSec(event.target.value)}
             />
           </label>
           <label>
@@ -287,10 +335,11 @@ export function SettingsPage() {
               type="number"
               min="0"
               max="3600"
-              step="5"
+              step="1"
               required
               value={walkSec}
-              onChange={(event) => setWalkSec(Number(event.target.value))}
+              onBlur={() => normalizeTimingInput(walkSec, setWalkSec)}
+              onChange={(event) => setWalkSec(event.target.value)}
             />
           </label>
           <label>
@@ -300,10 +349,11 @@ export function SettingsPage() {
               type="number"
               min="0"
               max="3600"
-              step="15"
+              step="1"
               required
               value={cooldownSec}
-              onChange={(event) => setCooldownSec(Number(event.target.value))}
+              onBlur={() => normalizeTimingInput(cooldownSec, setCooldownSec)}
+              onChange={(event) => setCooldownSec(event.target.value)}
             />
           </label>
         </div>
@@ -339,10 +389,16 @@ export function SettingsPage() {
         </button>
 
         {recoveryCode ? (
-          <label>
-            <span className="field-label">Recovery code</span>
-            <input readOnly value={recoveryCode} />
-          </label>
+          <>
+            <label>
+              <span className="field-label">Recovery code</span>
+              <input readOnly value={recoveryCode} />
+            </label>
+            <button className="secondary-action" type="button" onClick={downloadCode}>
+              <Download aria-hidden="true" size={23} />
+              Download recovery code
+            </button>
+          </>
         ) : null}
 
         {recoveryCodeStatus?.exists ? (

@@ -95,7 +95,7 @@ pnpm db:seed
 - History and weekly analytics
 - Editable workout timing in Settings: warmup, run, walk, cooldown
 - Anonymous server profile created automatically
-- Recovery code create, rotate, revoke, and restore
+- Recovery code create, download, rotate, revoke, and restore
 - Delete server and local progress from Settings
 - JSON export endpoint
 - Privacy page at `/privacy.html`
