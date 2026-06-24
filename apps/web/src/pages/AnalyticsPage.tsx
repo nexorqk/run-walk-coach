@@ -1,5 +1,5 @@
 import { formatTime, type AnalyticsSummary } from "@run-walk-coach/shared";
-import { RefreshCcw } from "lucide-react";
+import { AlertTriangle, RefreshCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getAnalyticsSummary } from "../api/client.js";
 import { WorkoutSummary } from "../components/WorkoutSummary.js";
@@ -79,6 +79,16 @@ export function AnalyticsPage() {
           <RefreshCcw aria-hidden="true" size={24} />
         </button>
       </section>
+
+      {!serverSyncEnabled ? (
+        <div className="warning-callout">
+          <AlertTriangle aria-hidden="true" size={22} />
+          <p>
+            Progress is saved only in this browser. If browser storage is cleared,
+            all local stats will be deleted.
+          </p>
+        </div>
+      ) : null}
 
       {isLoading ? <p className="muted">Loading analytics...</p> : null}
 

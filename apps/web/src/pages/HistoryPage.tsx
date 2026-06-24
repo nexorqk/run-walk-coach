@@ -1,5 +1,5 @@
 import { formatTime, type WorkoutSession } from "@run-walk-coach/shared";
-import { RefreshCcw } from "lucide-react";
+import { AlertTriangle, RefreshCcw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getSessions } from "../api/client.js";
 import { db, type LocalWorkoutSession, type SyncStatus } from "../db/local-db.js";
@@ -99,6 +99,16 @@ export function HistoryPage() {
           <RefreshCcw aria-hidden="true" size={24} />
         </button>
       </section>
+
+      {!serverSyncEnabled ? (
+        <div className="warning-callout">
+          <AlertTriangle aria-hidden="true" size={22} />
+          <p>
+            Progress is saved only in this browser. If browser storage is cleared,
+            all local history will be deleted.
+          </p>
+        </div>
+      ) : null}
 
       {isLoading ? <p className="muted">Loading sessions...</p> : null}
 

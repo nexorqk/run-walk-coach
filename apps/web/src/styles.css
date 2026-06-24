@@ -360,6 +360,161 @@ h2 {
   font-weight: 750;
 }
 
+.coach-callout-amber {
+  border-color: color-mix(in srgb, var(--amber) 42%, var(--line));
+  background: color-mix(in srgb, var(--surface) 84%, var(--amber));
+}
+
+.coach-callout-amber svg {
+  color: var(--amber);
+}
+
+.coach-callout-danger {
+  border-color: color-mix(in srgb, var(--danger) 42%, var(--line));
+  background: color-mix(in srgb, var(--surface) 86%, var(--danger));
+}
+
+.coach-callout-danger svg {
+  color: var(--danger);
+}
+
+.guide-copy {
+  line-height: 1.5;
+}
+
+.guide-copy h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.guide-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.guide-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.guide-table th,
+.guide-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.guide-table th {
+  color: var(--text);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.guide-table td {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.guide-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.guide-list,
+.guide-ladder {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+}
+
+.guide-list li,
+.guide-ladder li {
+  padding-left: 2px;
+}
+
+.guide-ladder {
+  list-style-position: outside;
+}
+
+.guide-details {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.guide-details:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.guide-details summary {
+  min-height: 44px;
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 900;
+}
+
+.guide-details summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.guide-details-body,
+.guide-subsection {
+  display: grid;
+  gap: 12px;
+}
+
+.guide-details-body {
+  padding: 0 0 6px;
+}
+
+.guide-subsection {
+  padding-top: 4px;
+}
+
+.guide-metric-grid,
+.guide-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.guide-metric-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.guide-metric-grid div,
+.guide-timeline div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.guide-metric-grid strong,
+.guide-timeline strong {
+  color: var(--text);
+}
+
+.guide-metric-grid span,
+.guide-timeline span {
+  color: var(--muted);
+  line-height: 1.38;
+}
+
+.guide-timeline svg {
+  color: var(--accent);
+}
+
 .zone-list {
   display: grid;
   gap: 10px;
@@ -833,5 +988,10 @@ a:focus-visible {
   .workout-screen {
     padding-right: 28px;
     padding-left: 28px;
+  }
+
+  .guide-metric-grid,
+  .guide-timeline {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
