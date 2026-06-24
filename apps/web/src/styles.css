@@ -43,6 +43,9 @@
 html {
   min-height: 100%;
   background: var(--bg);
+  scroll-padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -54,6 +57,7 @@ body {
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
 }
 
 button,
@@ -61,6 +65,12 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px;
 }
 
 button,
@@ -95,8 +105,13 @@ h2 {
 }
 
 .app-shell {
-  min-height: 100dvh;
+  min-height: 100vh;
+  min-height: 100svh;
   padding: 0 16px calc(92px + env(safe-area-inset-bottom));
+}
+
+:root[data-display-mode="standalone"] .app-shell {
+  min-height: 100dvh;
 }
 
 .app-header {
@@ -111,6 +126,7 @@ h2 {
   padding: env(safe-area-inset-top) 16px 0;
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   border-bottom: 1px solid var(--chrome-line);
+  -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
 
@@ -347,6 +363,7 @@ h2 {
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   background: var(--nav-bg);
   border-top: 1px solid var(--chrome-line);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
 
@@ -361,6 +378,9 @@ h2 {
   font-size: 0.78rem;
   font-weight: 800;
   text-decoration: none;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .segmented-control {
@@ -631,7 +651,8 @@ h2 {
 .workout-screen {
   --phase-color: var(--surface-strong);
   position: relative;
-  min-height: 100dvh;
+  min-height: 100vh;
+  min-height: 100svh;
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   gap: 20px;
@@ -640,6 +661,10 @@ h2 {
   background: color-mix(in srgb, var(--bg) 90%, var(--phase-color));
   color: var(--text);
   transition: background 260ms ease;
+}
+
+:root[data-display-mode="standalone"] .workout-screen {
+  min-height: 100dvh;
 }
 
 .phase-warmup {

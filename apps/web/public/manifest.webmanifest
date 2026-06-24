@@ -1,10 +1,13 @@
 {
   "name": "RunWalk Coach",
   "short_name": "RunWalk",
-  "description": "Run-walk training coach for mobile browsers.",
+  "description": "Run-walk training coach optimized for iOS Safari, with optional PWA install.",
   "start_url": "/today",
+  "id": "/today",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
+  "orientation": "portrait",
   "background_color": "#f7f9fb",
   "theme_color": "#f7f9fb",
   "icons": [
