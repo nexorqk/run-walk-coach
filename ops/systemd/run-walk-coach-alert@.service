@@ -1,0 +1,7 @@
+[Unit]
+Description=Send RunWalk operational alert for %i
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/run-walk-coach/ops.env
+ExecStart=/usr/local/sbin/run-walk-coach-send-alert systemd-%i critical "RunWalk systemd unit failed" "Systemd unit %i failed on this host. Check journalctl -u %i."

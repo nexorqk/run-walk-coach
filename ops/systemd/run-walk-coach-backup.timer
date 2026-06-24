@@ -1,0 +1,11 @@
+[Unit]
+Description=Run RunWalk Coach PostgreSQL backup daily
+
+[Timer]
+OnCalendar=*-*-* 03:45:00
+Persistent=true
+RandomizedDelaySec=15m
+Unit=run-walk-coach-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Check RunWalk Coach production health
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+OnFailure=run-walk-coach-alert@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/run-walk-coach/ops.env
+ExecStart=/usr/local/sbin/run-walk-coach-check-production

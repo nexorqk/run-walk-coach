@@ -1,0 +1,13 @@
+[Unit]
+Description=Back up the RunWalk Coach PostgreSQL database
+Requires=docker.service
+After=docker.service
+OnFailure=run-walk-coach-alert@%n.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/run-walk-coach/ops.env
+ExecStart=/usr/local/sbin/run-walk-coach-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

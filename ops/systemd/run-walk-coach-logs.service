@@ -1,0 +1,16 @@
+[Unit]
+Description=Collect RunWalk Coach Docker logs in journald
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/root/workspace/run-walk-coach
+ExecStart=/usr/bin/docker compose logs -f --no-color api postgres
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

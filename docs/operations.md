@@ -48,42 +48,44 @@ Use readiness for deploy rollouts because it checks database connectivity.
 
 ## Backups
 
-Backups use `pg_dump` custom format.
+Production backups use the Postgres Docker container tools, so the host does not need `pg_dump`.
+Backups are written in `pg_dump` custom format to `/var/backups/run-walk-coach/postgres`.
 
 ```bash
-DATABASE_URL=postgresql://... BACKUP_DIR=backups BACKUP_RETENTION_DAYS=30 ./scripts/db-backup.sh
+systemctl status run-walk-coach-backup.timer
+systemctl start run-walk-coach-backup.service
 ```
 
-The script deletes `runwalk-*.dump` files older than `BACKUP_RETENTION_DAYS` inside `BACKUP_DIR`.
+The timer runs daily at 03:45 with a randomized delay. The backup script keeps
+`runwalk-*.dump` files for `BACKUP_RETENTION_DAYS` and updates `latest.dump`.
 
 ## Restore Drill
 
-Run a restore drill before launch and after every material schema change.
+Restore drills run weekly into a temporary database and do not touch production data.
 
-1. Create a fresh database.
-2. Restore the latest dump:
+```bash
+systemctl status run-walk-coach-restore-drill.timer
+systemctl start run-walk-coach-restore-drill.service
+cat /var/lib/run-walk-coach/restore-drill.last
+```
 
-   ```bash
-   DATABASE_URL=postgresql://... BACKUP=backups/runwalk-YYYYMMDDTHHMMSSZ.dump ./scripts/db-restore.sh
-   ```
-
-3. Run migrations:
-
-   ```bash
-   DATABASE_URL=postgresql://... pnpm --filter @run-walk-coach/api db:deploy
-   ```
-
-4. Start the API and verify:
-
-   ```bash
-   curl -fsS https://your-app.example.com/api/health/ready
-   ```
-
-5. Verify at least one Google-linked profile, session, and workout template from the restored app.
+The drill restores the latest backup, checks the restored `User` and `WorkoutSession`
+tables, writes the last successful report, then drops the temporary database.
 
 ## Monitoring
 
-Collect API logs from stdout/stderr. Every unhandled API error includes a request id in the response and logs.
+RunWalk Coach uses systemd timers and journald for basic production monitoring:
+
+```bash
+systemctl status run-walk-coach-monitor.timer
+systemctl status run-walk-coach-logs.service
+journalctl -u run-walk-coach-monitor.service -n 100 --no-pager
+journalctl -u run-walk-coach-logs.service -n 100 --no-pager
+tail -n 100 /var/log/run-walk-coach/alerts.log
+```
+
+The monitor checks API readiness, API 5xx responses in nginx access logs, disk usage,
+latest backup age, expected Docker services, and the log collector unit.
 
 Minimum alerts:
 
@@ -92,6 +94,10 @@ Minimum alerts:
 - Database connections fail.
 - Backup job fails or latest backup age exceeds 24 hours.
 - Disk usage on database volume exceeds 80%.
+
+Alerts are always written to journald and `/var/log/run-walk-coach/alerts.log`. Set
+`ALERT_WEBHOOK_URL` in `/etc/run-walk-coach/ops.env` to also deliver JSON alerts to
+an external collector.
 
 ## Maintenance
 
