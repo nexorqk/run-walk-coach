@@ -1,15 +1,11 @@
 import {
   AnalyticsSummarySchema,
-  CreateRecoveryCodeResponseSchema,
+  AuthProvidersSchema,
   ProgressionResponseSchema,
-  RecoverWithCodeSchema,
-  RecoveryCodeStatusSchema,
   type AnalyticsSummary,
+  type AuthProviders,
   type CreateWorkoutSession,
-  type CreateRecoveryCodeResponse,
   type ProgressionResponse,
-  type RecoverWithCode,
-  type RecoveryCodeStatus,
   type UpdateUserProfile,
   type UpdateWorkoutTemplate,
   type UserProfile,
@@ -22,6 +18,10 @@ import {
 import { z } from "zod";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api";
+
+export function googleLoginUrl() {
+  return `${API_BASE}/auth/google/start`;
+}
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
@@ -67,33 +67,8 @@ export async function deleteProfile(): Promise<void> {
   });
 }
 
-export async function createRecoveryCode(): Promise<CreateRecoveryCodeResponse> {
-  return CreateRecoveryCodeResponseSchema.parse(
-    await apiFetch<unknown>("/auth/recovery-code", {
-      method: "POST"
-    })
-  );
-}
-
-export async function getRecoveryCodeStatus(): Promise<RecoveryCodeStatus> {
-  return RecoveryCodeStatusSchema.parse(await apiFetch<unknown>("/auth/recovery-code"));
-}
-
-export async function revokeRecoveryCode(): Promise<RecoveryCodeStatus> {
-  return RecoveryCodeStatusSchema.parse(
-    await apiFetch<unknown>("/auth/recovery-code", {
-      method: "DELETE"
-    })
-  );
-}
-
-export async function recoverWithCode(payload: RecoverWithCode): Promise<UserProfile> {
-  return UserProfileSchema.parse(
-    await apiFetch<unknown>("/auth/recover", {
-      method: "POST",
-      body: JSON.stringify(RecoverWithCodeSchema.parse(payload))
-    })
-  );
+export async function getAuthProviders(): Promise<AuthProviders> {
+  return AuthProvidersSchema.parse(await apiFetch<unknown>("/auth/providers"));
 }
 
 export async function getWorkoutTemplates(): Promise<WorkoutTemplate[]> {

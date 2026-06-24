@@ -1,22 +1,26 @@
-import { buildWorkoutTimeline, formatTime, type RecoveryCodeStatus } from "@run-walk-coach/shared";
-import { Download, KeyRound, Save, Trash2 } from "lucide-react";
+import { buildWorkoutTimeline, formatTime, type AuthProviders } from "@run-walk-coach/shared";
+import { AlertTriangle, LogIn, Save, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import {
-  createRecoveryCode,
   deleteProfile,
-  getRecoveryCodeStatus,
-  recoverWithCode,
-  revokeRecoveryCode,
+  getAuthProviders,
+  googleLoginUrl,
   updateProfile,
   updateWorkoutTemplate
 } from "../api/client.js";
 import { db } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
 
+const LOCAL_PROFILE_KEY = "runWalkCoach.localProfile";
+const LOCAL_TEMPLATES_KEY = "runWalkCoach.localTemplates";
+
 export function SettingsPage() {
   const profile = useAppStore((state) => state.profile);
   const recommendation = useAppStore((state) => state.recommendation);
+  const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const loadInitialData = useAppStore((state) => state.loadInitialData);
+  const updateLocalProfile = useAppStore((state) => state.updateLocalProfile);
+  const updateLocalWorkoutTemplate = useAppStore((state) => state.updateLocalWorkoutTemplate);
   const setWorkoutDraft = useAppStore((state) => state.setWorkoutDraft);
   const [heightCm, setHeightCm] = useState(185);
   const [goalSpeedKmh, setGoalSpeedKmh] = useState(12);
@@ -27,13 +31,9 @@ export function SettingsPage() {
   const [walkSec, setWalkSec] = useState("90");
   const [cooldownSec, setCooldownSec] = useState("300");
   const [status, setStatus] = useState("");
-  const [recoveryStatus, setRecoveryStatus] = useState("");
-  const [recoveryCodeStatus, setRecoveryCodeStatus] = useState<RecoveryCodeStatus>();
-  const [recoveryCode, setRecoveryCode] = useState("");
-  const [recoverInput, setRecoverInput] = useState("");
+  const [authStatus, setAuthStatus] = useState("");
+  const [authProviders, setAuthProviders] = useState<AuthProviders>();
   const [isSaving, setIsSaving] = useState(false);
-  const [isCreatingRecoveryCode, setIsCreatingRecoveryCode] = useState(false);
-  const [isRecovering, setIsRecovering] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const currentTemplate = recommendation?.template;
   const parsedWarmupSec = Number(warmupSec);
@@ -58,9 +58,8 @@ export function SettingsPage() {
         cooldownSec: hasValidTiming ? parsedCooldownSec : currentTemplate.cooldownSec
       }
     : undefined;
-  const totalDurationSec = editedTemplate && hasValidTiming
-    ? buildWorkoutTimeline(editedTemplate).totalDurationSec
-    : undefined;
+  const totalDurationSec =
+    editedTemplate && hasValidTiming ? buildWorkoutTimeline(editedTemplate).totalDurationSec : undefined;
 
   useEffect(() => {
     if (profile) {
@@ -81,10 +80,26 @@ export function SettingsPage() {
   }, [currentTemplate]);
 
   useEffect(() => {
-    void getRecoveryCodeStatus()
-      .then(setRecoveryCodeStatus)
+    void getAuthProviders()
+      .then(setAuthProviders)
       .catch(() => undefined);
-  }, [profile?.id]);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const googleStatus = params.get("google");
+
+    if (googleStatus === "connected") {
+      setAuthStatus("Google account connected. Local sessions will sync when possible.");
+      void loadInitialData();
+    } else if (googleStatus === "error") {
+      setAuthStatus("Google login could not be completed.");
+    }
+
+    if (googleStatus) {
+      window.history.replaceState(null, "", "/settings");
+    }
+  }, [loadInitialData]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -92,29 +107,37 @@ export function SettingsPage() {
     setIsSaving(true);
 
     try {
-      const updates: Promise<unknown>[] = [
-        updateProfile({
-          heightCm,
-          goalSpeedKmh,
-          easyHrMin,
-          easyHrMax
-        })
-      ];
+      const profilePayload = {
+        heightCm,
+        goalSpeedKmh,
+        easyHrMin,
+        easyHrMax
+      };
+      const timingPayload = {
+        warmupSec: parsedWarmupSec,
+        runSec: parsedRunSec,
+        walkSec: parsedWalkSec,
+        cooldownSec: parsedCooldownSec
+      };
 
-      if (currentTemplate) {
-        updates.push(
-          updateWorkoutTemplate(currentTemplate.id, {
-            warmupSec: parsedWarmupSec,
-            runSec: parsedRunSec,
-            walkSec: parsedWalkSec,
-            cooldownSec: parsedCooldownSec
-          })
-        );
+      if (serverSyncEnabled) {
+        const updates: Promise<unknown>[] = [updateProfile(profilePayload)];
+
+        if (currentTemplate) {
+          updates.push(updateWorkoutTemplate(currentTemplate.id, timingPayload));
+        }
+
+        await Promise.all(updates);
+        await loadInitialData();
+      } else {
+        updateLocalProfile(profilePayload);
+
+        if (currentTemplate) {
+          await updateLocalWorkoutTemplate(currentTemplate.id, timingPayload);
+        }
       }
 
-      await Promise.all(updates);
-      await loadInitialData();
-      setStatus("Saved");
+      setStatus(serverSyncEnabled ? "Saved to server" : "Saved in this browser");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Could not save settings");
     } finally {
@@ -130,85 +153,11 @@ export function SettingsPage() {
     setter(String(Number(value)));
   };
 
-  const createCode = async () => {
-    setIsCreatingRecoveryCode(true);
-    setRecoveryStatus("Creating...");
-
-    try {
-      const response = await createRecoveryCode();
-      setRecoveryCode(response.recoveryCode);
-      setRecoveryCodeStatus({
-        exists: true,
-        createdAt: response.createdAt,
-        lastUsedAt: null,
-        revokedAt: null
-      });
-      setRecoveryStatus("Recovery code created");
-    } catch (error) {
-      setRecoveryStatus(error instanceof Error ? error.message : "Could not create recovery code");
-    } finally {
-      setIsCreatingRecoveryCode(false);
-    }
-  };
-
-  const revokeCode = async () => {
-    setRecoveryStatus("Revoking...");
-
-    try {
-      setRecoveryCodeStatus(await revokeRecoveryCode());
-      setRecoveryCode("");
-      setRecoveryStatus("Recovery code revoked");
-    } catch (error) {
-      setRecoveryStatus(error instanceof Error ? error.message : "Could not revoke recovery code");
-    }
-  };
-
-  const downloadCode = () => {
-    const createdAt = recoveryCodeStatus?.createdAt ?? new Date().toISOString();
-    const contents = [
-      "RunWalk Coach recovery code",
-      "",
-      `Recovery code: ${recoveryCode}`,
-      `User: ${profile?.id ?? "unknown"}`,
-      `Created: ${createdAt}`,
-      "",
-      "Keep this code private. Anyone with this code can restore this profile.",
-      "The server stores only a hash of this code, so it cannot be shown again later."
-    ].join("\n");
-    const blob = new Blob([contents], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-
-    link.href = url;
-    link.download = `runwalk-recovery-${new Date(createdAt).toISOString().slice(0, 10)}.txt`;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    setRecoveryStatus("Recovery code downloaded");
-  };
-
-  const recover = async () => {
-    setIsRecovering(true);
-    setRecoveryStatus("Recovering...");
-
-    try {
-      await recoverWithCode({ recoveryCode: recoverInput });
-      await loadInitialData();
-      setRecoverInput("");
-      setRecoveryCode("");
-      setRecoveryCodeStatus(await getRecoveryCodeStatus());
-      setRecoveryStatus("Progress restored");
-    } catch (error) {
-      setRecoveryStatus(error instanceof Error ? error.message : "Could not restore progress");
-    } finally {
-      setIsRecovering(false);
-    }
-  };
-
   const deleteProgress = async () => {
     const confirmed = window.confirm(
-      "Delete all server and local progress for this user? This cannot be undone without a recovery code for another account."
+      serverSyncEnabled
+        ? "Delete server and browser progress for this Google account?"
+        : "Delete browser progress and settings? This cannot be undone."
     );
 
     if (!confirmed) {
@@ -216,19 +165,21 @@ export function SettingsPage() {
     }
 
     setIsDeletingProfile(true);
-    setRecoveryStatus("Deleting...");
+    setStatus("Deleting...");
 
     try {
-      await deleteProfile();
+      if (serverSyncEnabled) {
+        await deleteProfile();
+      }
+
       await db.sessions.clear();
+      localStorage.removeItem(LOCAL_PROFILE_KEY);
+      localStorage.removeItem(LOCAL_TEMPLATES_KEY);
       setWorkoutDraft(undefined);
-      setRecoveryCode("");
-      setRecoverInput("");
-      setRecoveryCodeStatus(undefined);
       await loadInitialData();
-      setRecoveryStatus("Progress deleted");
+      setStatus("Progress deleted");
     } catch (error) {
-      setRecoveryStatus(error instanceof Error ? error.message : "Could not delete progress");
+      setStatus(error instanceof Error ? error.message : "Could not delete progress");
     } finally {
       setIsDeletingProfile(false);
     }
@@ -239,7 +190,45 @@ export function SettingsPage() {
       <section className="panel">
         <div className="eyebrow">Settings</div>
         <h1>Profile</h1>
-        <p className="muted">{profile?.email ?? "Anonymous runner"}</p>
+        <p className="muted">
+          {serverSyncEnabled ? profile?.email ?? "Google account" : "Saved in this browser"}
+        </p>
+      </section>
+
+      <section className="form-section">
+        <div className="section-heading">
+          <h2>Account</h2>
+          <p className="muted">
+            {profile?.googleLinkedAt
+              ? `Google connected ${new Date(profile.googleLinkedAt).toLocaleDateString()}`
+              : "Connect Google to save progress on the server."}
+          </p>
+        </div>
+
+        {!serverSyncEnabled ? (
+          <div className="warning-callout">
+            <AlertTriangle aria-hidden="true" size={22} />
+            <p>
+              Progress is saved only in this browser and can be lost if cache,
+              cookies, or site data are cleared.
+            </p>
+          </div>
+        ) : null}
+
+        <button
+          className="secondary-action"
+          type="button"
+          disabled={!authProviders?.google.enabled}
+          onClick={() => window.location.assign(googleLoginUrl())}
+        >
+          <LogIn aria-hidden="true" size={23} />
+          {authProviders ? "Continue with Google" : "Checking Google login..."}
+        </button>
+
+        {authProviders && !authProviders.google.enabled ? (
+          <p className="muted">Google login is not configured on this server.</p>
+        ) : null}
+        {authStatus ? <p className="muted">{authStatus}</p> : null}
       </section>
 
       <section className="form-section two-column">
@@ -365,80 +354,6 @@ export function SettingsPage() {
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Recovery</h2>
-          <p className="muted">{profile ? `User ${profile.id.slice(0, 8)}` : "Anonymous session"}</p>
-        </div>
-
-        <p className="muted">
-          Recovery code: {recoveryCodeStatus?.exists ? "Active" : "Not created"}
-          {recoveryCodeStatus?.lastUsedAt ? `, last used ${new Date(recoveryCodeStatus.lastUsedAt).toLocaleString()}` : ""}
-        </p>
-
-        <button
-          className="secondary-action"
-          type="button"
-          disabled={isCreatingRecoveryCode}
-          onClick={() => void createCode()}
-        >
-          <KeyRound aria-hidden="true" size={23} />
-          {isCreatingRecoveryCode
-            ? "Creating..."
-            : recoveryCodeStatus?.exists
-              ? "Rotate recovery code"
-              : "Create recovery code"}
-        </button>
-
-        {recoveryCode ? (
-          <>
-            <label>
-              <span className="field-label">Recovery code</span>
-              <input readOnly value={recoveryCode} />
-            </label>
-            <button className="secondary-action" type="button" onClick={downloadCode}>
-              <Download aria-hidden="true" size={23} />
-              Download recovery code
-            </button>
-          </>
-        ) : null}
-
-        {recoveryCodeStatus?.exists ? (
-          <button className="secondary-action" type="button" onClick={() => void revokeCode()}>
-            <KeyRound aria-hidden="true" size={23} />
-            Revoke recovery code
-          </button>
-        ) : null}
-
-        <label>
-          <span className="field-label">Restore with code</span>
-          <input
-            autoComplete="one-time-code"
-            value={recoverInput}
-            onChange={(event) => setRecoverInput(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && recoverInput.trim().length > 0) {
-                event.preventDefault();
-                void recover();
-              }
-            }}
-            placeholder="RW-..."
-          />
-        </label>
-
-        <button
-          className="secondary-action"
-          type="button"
-          disabled={isRecovering || recoverInput.trim().length === 0}
-          onClick={() => void recover()}
-        >
-          <KeyRound aria-hidden="true" size={23} />
-          {isRecovering ? "Restoring..." : "Restore progress"}
-        </button>
-
-        {recoveryStatus ? <p className="muted">{recoveryStatus}</p> : null}
-      </section>
-
-      <section className="form-section">
-        <div className="section-heading">
           <h2>Privacy</h2>
           <p className="muted">
             <a className="inline-link" href="/privacy.html">
@@ -460,7 +375,7 @@ export function SettingsPage() {
 
       <button className="primary-action" type="submit" disabled={isSaving}>
         <Save aria-hidden="true" size={26} />
-        Save settings
+        {isSaving ? "Saving..." : "Save settings"}
       </button>
 
       {status ? <p className="muted">{status}</p> : null}

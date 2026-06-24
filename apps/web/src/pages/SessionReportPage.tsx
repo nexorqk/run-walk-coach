@@ -18,6 +18,7 @@ function optionalNumber(value: string) {
 export function SessionReportPage() {
   const navigate = useNavigate();
   const draft = useAppStore((state) => state.workoutDraft);
+  const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const setWorkoutDraft = useAppStore((state) => state.setWorkoutDraft);
   const refreshRecommendation = useAppStore((state) => state.refreshRecommendation);
   const [difficulty, setDifficulty] = useState(5);
@@ -58,7 +59,8 @@ export function SessionReportPage() {
         pain,
         notes: notes.trim() || null
       },
-      draft.template
+      draft.template,
+      serverSyncEnabled
     );
 
     setWorkoutDraft(undefined);

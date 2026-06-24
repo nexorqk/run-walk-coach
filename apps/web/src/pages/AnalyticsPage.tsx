@@ -17,15 +17,11 @@ function startOfWeek(date: Date) {
 export function AnalyticsPage() {
   const recommendation = useAppStore((state) => state.recommendation);
   const refreshRecommendation = useAppStore((state) => state.refreshRecommendation);
+  const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const load = async () => {
-    setIsLoading(true);
-
-    try {
-      setSummary(await getAnalyticsSummary());
-    } catch {
+  const loadLocal = async () => {
       const weekStart = startOfWeek(new Date());
       const localSessions = await db.sessions.toArray();
       const weekSessions = localSessions.filter((session) => new Date(session.date) >= weekStart);
@@ -50,6 +46,19 @@ export function AnalyticsPage() {
           next: recommendation
         });
       }
+  };
+
+  const load = async () => {
+    setIsLoading(true);
+
+    try {
+      if (serverSyncEnabled) {
+        setSummary(await getAnalyticsSummary());
+      } else {
+        await loadLocal();
+      }
+    } catch {
+      await loadLocal();
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +66,7 @@ export function AnalyticsPage() {
 
   useEffect(() => {
     void refreshRecommendation().finally(load);
-  }, []);
+  }, [serverSyncEnabled]);
 
   return (
     <div className="stack">

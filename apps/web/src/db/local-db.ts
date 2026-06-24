@@ -1,7 +1,7 @@
 import Dexie, { type Table } from "dexie";
 import type { BreathingLevel, PainType } from "@run-walk-coach/shared";
 
-export type SyncStatus = "pending" | "synced" | "failed";
+export type SyncStatus = "local" | "pending" | "synced" | "failed";
 
 export type LocalWorkoutSession = {
   localId: string;

@@ -35,6 +35,9 @@ services:
       DATABASE_URL: "${DATABASE_URL:?DATABASE_URL is required}"
       SESSION_COOKIE_NAME: rwc_session
       CORS_ORIGIN: "${CORS_ORIGIN:-https://run.storycraftbooks.com}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+      GOOGLE_REDIRECT_URI: "${GOOGLE_REDIRECT_URI:-https://run.storycraftbooks.com/api/auth/google/callback}"
     ports:
       - "4000:4000"
 

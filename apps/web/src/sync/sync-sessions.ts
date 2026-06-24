@@ -29,6 +29,11 @@ function toCreatePayload(session: LocalWorkoutSession): CreateWorkoutSession {
 }
 
 export async function trySyncSession(session: LocalWorkoutSession) {
+  await db.sessions.update(session.localId, {
+    syncStatus: "pending",
+    updatedAt: new Date().toISOString()
+  });
+
   try {
     const remote = await createSession(toCreatePayload(session));
     await db.sessions.update(session.localId, {
@@ -51,13 +56,14 @@ export async function saveSessionOfflineFirst(
     LocalWorkoutSession,
     "localId" | "remoteId" | "syncStatus" | "createdAt" | "updatedAt" | "templateName" | "templateLevel"
   >,
-  template?: WorkoutTemplate
+  template?: WorkoutTemplate,
+  syncEnabled = false
 ) {
   const now = new Date().toISOString();
   const localSession: LocalWorkoutSession = {
     ...payload,
     localId: crypto.randomUUID(),
-    syncStatus: "pending",
+    syncStatus: syncEnabled ? "pending" : "local",
     templateName: template?.name,
     templateLevel: template?.level,
     createdAt: now,
@@ -65,13 +71,20 @@ export async function saveSessionOfflineFirst(
   };
 
   await db.sessions.put(localSession);
-  await trySyncSession(localSession);
+
+  if (syncEnabled) {
+    await trySyncSession(localSession);
+  }
 
   return db.sessions.get(localSession.localId);
 }
 
-export async function retryPendingSessions() {
-  const pending = await db.sessions.where("syncStatus").anyOf("pending", "failed").toArray();
+export async function retryPendingSessions(syncEnabled = false) {
+  if (!syncEnabled) {
+    return;
+  }
+
+  const pending = await db.sessions.where("syncStatus").anyOf("local", "pending", "failed").toArray();
 
   for (const session of pending) {
     await trySyncSession(session);

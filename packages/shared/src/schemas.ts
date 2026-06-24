@@ -40,6 +40,7 @@ export const UserProfileSchema = z.object({
   goalSpeedKmh: z.number().positive(),
   easyHrMin: z.number().int().positive(),
   easyHrMax: z.number().int().positive(),
+  googleLinkedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string()
 });
@@ -105,6 +106,13 @@ export const RecoverWithCodeSchema = z.object({
   recoveryCode: z.string().trim().min(8).max(64)
 });
 
+export const AuthProvidersSchema = z.object({
+  google: z.object({
+    enabled: z.boolean(),
+    redirectUri: z.string().url()
+  })
+});
+
 export const CreateWorkoutSessionSchema = z.object({
   clientSessionId: z.string().uuid().nullable().optional(),
   templateId: z.string().nullable().optional(),
@@ -158,6 +166,7 @@ export type UpdateWorkoutTemplate = z.infer<typeof UpdateWorkoutTemplateSchema>;
 export type CreateRecoveryCodeResponse = z.infer<typeof CreateRecoveryCodeResponseSchema>;
 export type RecoveryCodeStatus = z.infer<typeof RecoveryCodeStatusSchema>;
 export type RecoverWithCode = z.infer<typeof RecoverWithCodeSchema>;
+export type AuthProviders = z.infer<typeof AuthProvidersSchema>;
 export type CreateWorkoutSession = z.infer<typeof CreateWorkoutSessionSchema>;
 export type WorkoutSession = z.infer<typeof WorkoutSessionSchema>;
 export type ProgressionResponse = z.infer<typeof ProgressionResponseSchema>;

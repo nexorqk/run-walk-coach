@@ -6,6 +6,9 @@
 NODE_ENV=production
 DATABASE_URL=postgresql://...
 CORS_ORIGIN=https://your-app.example.com
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=https://your-app.example.com/api/auth/google/callback
 SESSION_COOKIE_NAME=rwc_session
 RATE_LIMIT_MAX=240
 RATE_LIMIT_WINDOW_MS=60000
@@ -76,7 +79,7 @@ Run a restore drill before launch and after every material schema change.
    curl -fsS https://your-app.example.com/api/health/ready
    ```
 
-5. Verify at least one profile, session, and recovery-code status from the restored app.
+5. Verify at least one Google-linked profile, session, and workout template from the restored app.
 
 ## Monitoring
 
@@ -98,9 +101,8 @@ Run cleanup at least daily:
 DATABASE_URL=postgresql://... ANONYMOUS_USER_RETENTION_DAYS=7 pnpm --filter @run-walk-coach/api maintenance:cleanup
 ```
 
-This deletes expired auth sessions and anonymous users that never saved sessions, never created
-template overrides, and do not have recovery-code metadata.
+This deletes expired auth sessions and legacy abandoned anonymous users from older deployments.
 
 ## Privacy Operations
 
-Users can delete server and local progress in Settings. This deletes the anonymous profile and cascades related sessions, template overrides, auth sessions, and recovery code metadata.
+Users can delete browser progress in Settings. When signed in with Google, this also deletes the server profile and cascades related sessions, template overrides, and auth sessions.

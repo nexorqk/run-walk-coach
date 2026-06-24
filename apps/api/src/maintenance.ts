@@ -22,6 +22,7 @@ async function main() {
   const anonymousUsers = await prisma.user.deleteMany({
     where: {
       email: null,
+      googleId: null,
       createdAt: {
         lt: anonymousCutoff
       },

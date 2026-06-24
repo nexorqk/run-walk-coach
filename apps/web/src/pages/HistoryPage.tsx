@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getSessions } from "../api/client.js";
 import { db, type LocalWorkoutSession, type SyncStatus } from "../db/local-db.js";
 import { retryPendingSessions } from "../sync/sync-sessions.js";
+import { useAppStore } from "../store/app-store.js";
 import { formatDateTime, painLabel } from "../utils/labels.js";
 
 type HistoryItem = {
@@ -50,13 +51,20 @@ function remoteToHistory(session: WorkoutSession): HistoryItem {
 }
 
 export function HistoryPage() {
+  const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const load = async () => {
     setIsLoading(true);
-    await retryPendingSessions();
+    await retryPendingSessions(serverSyncEnabled);
     const localSessions = await db.sessions.orderBy("date").reverse().toArray();
+
+    if (!serverSyncEnabled) {
+      setItems(localSessions.map(localToHistory));
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const remoteSessions = await getSessions();
@@ -78,7 +86,7 @@ export function HistoryPage() {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [serverSyncEnabled]);
 
   return (
     <div className="stack">

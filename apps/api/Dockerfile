@@ -11,6 +11,7 @@ RUN pnpm install --filter @run-walk-coach/api... --frozen-lockfile
 
 COPY packages/shared packages/shared
 COPY apps/api apps/api
+ENV DATABASE_URL="postgresql://runwalk:runwalk@localhost:5432/runwalk?schema=public"
 RUN pnpm --filter @run-walk-coach/shared build
 RUN pnpm --filter @run-walk-coach/api build
 

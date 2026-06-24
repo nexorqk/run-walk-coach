@@ -13,6 +13,9 @@ const EnvSchema = z
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(8),
     AUTH_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60_000),
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    GOOGLE_REDIRECT_URI: z.string().url().optional(),
     REQUIRE_ORIGIN_CHECK: z
       .enum(["true", "false"])
       .optional()
@@ -24,6 +27,14 @@ const EnvSchema = z
         code: "custom",
         path: ["CORS_ORIGIN"],
         message: "CORS_ORIGIN is required in production"
+      });
+    }
+
+    if (Boolean(value.GOOGLE_CLIENT_ID) !== Boolean(value.GOOGLE_CLIENT_SECRET)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["GOOGLE_CLIENT_ID"],
+        message: "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured together"
       });
     }
   });
@@ -45,5 +56,9 @@ export const env = {
   rateLimitWindowMs: parsed.RATE_LIMIT_WINDOW_MS,
   authRateLimitMax: parsed.AUTH_RATE_LIMIT_MAX,
   authRateLimitWindowMs: parsed.AUTH_RATE_LIMIT_WINDOW_MS,
+  googleClientId: parsed.GOOGLE_CLIENT_ID,
+  googleClientSecret: parsed.GOOGLE_CLIENT_SECRET,
+  googleRedirectUri: parsed.GOOGLE_REDIRECT_URI ?? `${corsOrigins[0]}/api/auth/google/callback`,
+  googleAuthEnabled: Boolean(parsed.GOOGLE_CLIENT_ID && parsed.GOOGLE_CLIENT_SECRET),
   requireOriginCheck: parsed.REQUIRE_ORIGIN_CHECK ?? parsed.NODE_ENV === "production"
 };

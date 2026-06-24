@@ -1,8 +1,8 @@
 # RunWalk Coach
 
-Personal run-walk coaching PWA. It includes a React/Vite frontend, Fastify API, Prisma/PostgreSQL backend, shared TypeScript/Zod contracts, offline-first session storage with IndexedDB, anonymous cookie auth, recovery codes, and production hardening for basic deployment.
+Personal run-walk coaching PWA. It includes a React/Vite frontend, Fastify API, Prisma/PostgreSQL backend, shared TypeScript/Zod contracts, offline-first session storage with IndexedDB, Google OAuth server sync, and production hardening for basic deployment.
 
-The core product remains intentionally narrow: run-walk training and personal workout logging. The main user flow is Today -> Timer -> Report -> Save locally -> Sync to API -> History -> Next recommendation.
+The core product remains intentionally narrow: run-walk training and personal workout logging. The main user flow is Today -> Timer -> Report -> Save in browser -> optional Google sync -> History -> Next recommendation.
 
 ## Stack
 
@@ -10,7 +10,7 @@ The core product remains intentionally narrow: run-walk training and personal wo
 - React, Vite, TypeScript, React Router, Zustand, Dexie, Zod
 - Fastify, Prisma, PostgreSQL
 - PWA manifest and service worker
-- Anonymous `httpOnly` session cookies with recovery codes
+- Google OAuth with `httpOnly` session cookies for server sync
 - Docker Compose for local Postgres/API and migration job
 
 ## Local Setup
@@ -90,21 +90,22 @@ pnpm db:seed
 - Full-screen run/walk timer
 - Session report with difficulty, breathing, pain, heart-rate fields, and notes
 - Offline-first save to IndexedDB
-- Retry sync from app startup and History
+- Browser-only progress until Google login is connected
+- Retry sync from app startup and History after Google login
 - Idempotent server sync with `clientSessionId`
 - History and weekly analytics
 - Editable workout timing in Settings: warmup, run, walk, cooldown
-- Anonymous server profile created automatically
-- Recovery code create, download, rotate, revoke, and restore
+- Coach screen with pulse zones, pacing cue, and running guidance
+- Google login for saving progress on the server
 - Delete server and local progress from Settings
 - JSON export endpoint
 - Privacy page at `/privacy.html`
 
-## Auth And Recovery
+## Auth And Storage
 
-The API creates an anonymous `User` on first use and stores a session token in an `httpOnly` cookie. Users do not need email or password.
+Without Google login, profile settings, workout timing, and workout reports are stored in the browser. This local progress lasts until the user clears browser storage/cookies or deletes progress in Settings.
 
-Recovery codes can be created in Settings. The raw code is shown to the user; the server stores only a hash. Anyone with the recovery code can restore the anonymous profile on another browser or device, so users should keep it private. Recovery codes can be revoked or rotated.
+Google OAuth is the only server-sync path. After Google login, the API stores a secure `httpOnly` session cookie and local sessions are retried for server sync.
 
 ## MVP Flow
 
@@ -113,8 +114,8 @@ Recovery codes can be created in Settings. The raw code is shown to the user; th
 3. Use the full-screen timer with pause/resume and finish controls.
 4. Fill the session report.
 5. The app saves the report to IndexedDB first.
-6. It then tries to sync with the backend.
-7. Pending sessions are retried on app startup and from the history screen.
+6. If Google login is connected, it then tries to sync with the backend.
+7. Local sessions are retried after Google login and from the history screen.
 
 ## Progression Rules
 
@@ -137,6 +138,9 @@ Production runtime requires:
 NODE_ENV=production
 DATABASE_URL=postgresql://...
 CORS_ORIGIN=https://your-app.example.com
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=https://your-app.example.com/api/auth/google/callback
 SESSION_COOKIE_NAME=rwc_session
 REQUIRE_ORIGIN_CHECK=true
 ```
@@ -150,13 +154,13 @@ Security and deployment hardening included:
 - readiness endpoint with database check
 - separate Docker migration service
 - backup/restore scripts
-- expired session and abandoned anonymous-user cleanup
+- expired session cleanup
 - basic Vitest coverage for shared contracts and security helper behavior
 
 See [docs/operations.md](docs/operations.md) for deployment order, backup/restore drill, health checks, maintenance, and monitoring notes.
 
 ## Notes
 
-- Heart rate is manual in v1.
+- Heart rate is manual in v1, with Coach guidance based on the easy HR range in Settings.
 - No GPS, Bluetooth HR, social features, payments, or AI features are included.
-- The app stores pending sessions locally in IndexedDB so workouts can be saved offline.
+- The app stores local sessions in IndexedDB so workouts can be saved offline and before Google login.
