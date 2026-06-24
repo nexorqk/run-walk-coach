@@ -1,5 +1,5 @@
 import { buildWorkoutTimeline, formatTime, type AuthProviders } from "@run-walk-coach/shared";
-import { AlertTriangle, LogIn, Moon, Save, Sun, Trash2 } from "lucide-react";
+import { AlertTriangle, Languages, LogIn, Monitor, Moon, Save, Sun, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import {
   deleteProfile,
@@ -10,6 +10,7 @@ import {
 } from "../api/client.js";
 import { db } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
+import { localizeTemplateName, useLanguage } from "../utils/language.js";
 import { getStoredTheme, setStoredTheme, type AppTheme } from "../utils/theme.js";
 
 const LOCAL_PROFILE_KEY = "runWalkCoach.localProfile";
@@ -23,6 +24,7 @@ export function SettingsPage() {
   const updateLocalProfile = useAppStore((state) => state.updateLocalProfile);
   const updateLocalWorkoutTemplate = useAppStore((state) => state.updateLocalWorkoutTemplate);
   const setWorkoutDraft = useAppStore((state) => state.setWorkoutDraft);
+  const { language, setLanguage, t } = useLanguage();
   const [heightCm, setHeightCm] = useState(185);
   const [goalSpeedKmh, setGoalSpeedKmh] = useState(12);
   const [easyHrMin, setEasyHrMin] = useState(130);
@@ -92,20 +94,26 @@ export function SettingsPage() {
     const googleStatus = params.get("google");
 
     if (googleStatus === "connected") {
-      setAuthStatus("Google account connected. Local sessions will sync when possible.");
+      setAuthStatus(t({
+        en: "Google account connected. Local sessions will sync when possible.",
+        ru: "Google аккаунт подключён. Локальные тренировки будут синхронизироваться при возможности."
+      }));
       void loadInitialData();
     } else if (googleStatus === "error") {
-      setAuthStatus("Google login could not be completed.");
+      setAuthStatus(t({
+        en: "Google login could not be completed.",
+        ru: "Не удалось завершить вход через Google."
+      }));
     }
 
     if (googleStatus) {
       window.history.replaceState(null, "", "/settings");
     }
-  }, [loadInitialData]);
+  }, [loadInitialData, t]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setStatus("Saving...");
+    setStatus(t({ en: "Saving...", ru: "Сохранение..." }));
     setIsSaving(true);
 
     try {
@@ -139,9 +147,9 @@ export function SettingsPage() {
         }
       }
 
-      setStatus(serverSyncEnabled ? "Saved to server" : "Saved in this browser");
+      setStatus(serverSyncEnabled ? t({ en: "Saved to server", ru: "Сохранено на сервер" }) : t({ en: "Saved in this browser", ru: "Сохранено в этом браузере" }));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not save settings");
+      setStatus(error instanceof Error ? error.message : t({ en: "Could not save settings", ru: "Не удалось сохранить настройки" }));
     } finally {
       setIsSaving(false);
     }
@@ -163,8 +171,14 @@ export function SettingsPage() {
   const deleteProgress = async () => {
     const confirmed = window.confirm(
       serverSyncEnabled
-        ? "Delete server and browser progress for this Google account?"
-        : "Delete browser progress and settings? This cannot be undone."
+        ? t({
+            en: "Delete server and browser progress for this Google account?",
+            ru: "Удалить серверный и браузерный прогресс для этого Google аккаунта?"
+          })
+        : t({
+            en: "Delete browser progress and settings? This cannot be undone.",
+            ru: "Удалить прогресс и настройки в этом браузере? Это нельзя отменить."
+          })
     );
 
     if (!confirmed) {
@@ -172,7 +186,7 @@ export function SettingsPage() {
     }
 
     setIsDeletingProfile(true);
-    setStatus("Deleting...");
+    setStatus(t({ en: "Deleting...", ru: "Удаление..." }));
 
     try {
       if (serverSyncEnabled) {
@@ -184,9 +198,9 @@ export function SettingsPage() {
       localStorage.removeItem(LOCAL_TEMPLATES_KEY);
       setWorkoutDraft(undefined);
       await loadInitialData();
-      setStatus("Progress deleted");
+      setStatus(t({ en: "Progress deleted", ru: "Прогресс удалён" }));
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Could not delete progress");
+      setStatus(error instanceof Error ? error.message : t({ en: "Could not delete progress", ru: "Не удалось удалить прогресс" }));
     } finally {
       setIsDeletingProfile(false);
     }
@@ -195,20 +209,20 @@ export function SettingsPage() {
   return (
     <form className="stack" onSubmit={submit}>
       <section className="panel">
-        <div className="eyebrow">Settings</div>
-        <h1>Profile</h1>
+        <div className="eyebrow">{t({ en: "Settings", ru: "Настройки" })}</div>
+        <h1>{t({ en: "Profile", ru: "Профиль" })}</h1>
         <p className="muted">
-          {serverSyncEnabled ? profile?.email ?? "Google account" : "Saved in this browser"}
+          {serverSyncEnabled ? profile?.email ?? t({ en: "Google account", ru: "Google аккаунт" }) : t({ en: "Saved in this browser", ru: "Сохранено в этом браузере" })}
         </p>
       </section>
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Account</h2>
+          <h2>{t({ en: "Account", ru: "Аккаунт" })}</h2>
           <p className="muted">
             {profile?.googleLinkedAt
-              ? `Google connected ${new Date(profile.googleLinkedAt).toLocaleDateString()}`
-              : "Connect Google to save progress on the server."}
+              ? `${t({ en: "Google connected", ru: "Google подключён" })} ${new Date(profile.googleLinkedAt).toLocaleDateString(language === "ru" ? "ru-RU" : undefined)}`
+              : t({ en: "Connect Google to save progress on the server.", ru: "Подключи Google, чтобы сохранять прогресс на сервере." })}
           </p>
         </div>
 
@@ -216,8 +230,10 @@ export function SettingsPage() {
           <div className="warning-callout">
             <AlertTriangle aria-hidden="true" size={22} />
             <p>
-              Progress is saved only in this browser and can be lost if cache,
-              cookies, or site data are cleared.
+              {t({
+                en: "Progress is saved only in this browser and can be lost if cache, cookies, or site data are cleared.",
+                ru: "Прогресс хранится только в этом браузере и может пропасть при очистке кеша, cookies или данных сайта."
+              })}
             </p>
           </div>
         ) : null}
@@ -229,21 +245,30 @@ export function SettingsPage() {
           onClick={() => window.location.assign(googleLoginUrl())}
         >
           <LogIn aria-hidden="true" size={23} />
-          {authProviders ? "Continue with Google" : "Checking Google login..."}
+          {authProviders ? t({ en: "Continue with Google", ru: "Войти через Google" }) : t({ en: "Checking Google login...", ru: "Проверка входа через Google..." })}
         </button>
 
         {authProviders && !authProviders.google.enabled ? (
-          <p className="muted">Google login is not configured on this server.</p>
+          <p className="muted">{t({ en: "Google login is not configured on this server.", ru: "Вход через Google не настроен на сервере." })}</p>
         ) : null}
         {authStatus ? <p className="muted">{authStatus}</p> : null}
       </section>
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Display</h2>
-          <p className="muted">Choose the app theme for this browser.</p>
+          <h2>{t({ en: "Display", ru: "Вид" })}</h2>
+          <p className="muted">{t({ en: "Choose a theme for this browser or follow system settings.", ru: "Выбери тему для этого браузера или используй системную." })}</p>
         </div>
-        <div className="segmented-control" role="group" aria-label="Theme">
+        <div className="segmented-control three-options" role="group" aria-label="Theme">
+          <button
+            className={`segment-option ${theme === "system" ? "active" : ""}`}
+            type="button"
+            aria-pressed={theme === "system"}
+            onClick={() => changeTheme("system")}
+          >
+            <Monitor aria-hidden="true" size={20} />
+            {t({ en: "System", ru: "Система" })}
+          </button>
           <button
             className={`segment-option ${theme === "light" ? "active" : ""}`}
             type="button"
@@ -251,7 +276,7 @@ export function SettingsPage() {
             onClick={() => changeTheme("light")}
           >
             <Sun aria-hidden="true" size={20} />
-            Light
+            {t({ en: "Light", ru: "Светлая" })}
           </button>
           <button
             className={`segment-option ${theme === "dark" ? "active" : ""}`}
@@ -260,14 +285,41 @@ export function SettingsPage() {
             onClick={() => changeTheme("dark")}
           >
             <Moon aria-hidden="true" size={20} />
-            Dark
+            {t({ en: "Dark", ru: "Тёмная" })}
+          </button>
+        </div>
+      </section>
+
+      <section className="form-section">
+        <div className="section-heading">
+          <h2>{t({ en: "Language", ru: "Язык" })}</h2>
+          <p className="muted">{t({ en: "Choose the interface language for this browser.", ru: "Выбери язык интерфейса для этого браузера." })}</p>
+        </div>
+        <div className="segmented-control" role="group" aria-label={t({ en: "Language", ru: "Язык" })}>
+          <button
+            className={`segment-option ${language === "en" ? "active" : ""}`}
+            type="button"
+            aria-pressed={language === "en"}
+            onClick={() => setLanguage("en")}
+          >
+            <Languages aria-hidden="true" size={20} />
+            English
+          </button>
+          <button
+            className={`segment-option ${language === "ru" ? "active" : ""}`}
+            type="button"
+            aria-pressed={language === "ru"}
+            onClick={() => setLanguage("ru")}
+          >
+            <Languages aria-hidden="true" size={20} />
+            Русский
           </button>
         </div>
       </section>
 
       <section className="form-section two-column">
         <label>
-          <span className="field-label">Height, cm</span>
+          <span className="field-label">{t({ en: "Height, cm", ru: "Рост, см" })}</span>
           <input
             inputMode="numeric"
             type="number"
@@ -278,7 +330,7 @@ export function SettingsPage() {
           />
         </label>
         <label>
-          <span className="field-label">Goal speed, km/h</span>
+          <span className="field-label">{t({ en: "Goal speed, km/h", ru: "Целевая скорость, км/ч" })}</span>
           <input
             inputMode="decimal"
             type="number"
@@ -293,7 +345,7 @@ export function SettingsPage() {
 
       <section className="form-section two-column">
         <label>
-          <span className="field-label">Easy HR min</span>
+          <span className="field-label">{t({ en: "Easy HR min", ru: "Лёгкий пульс min" })}</span>
           <input
             inputMode="numeric"
             type="number"
@@ -304,7 +356,7 @@ export function SettingsPage() {
           />
         </label>
         <label>
-          <span className="field-label">Easy HR max</span>
+          <span className="field-label">{t({ en: "Easy HR max", ru: "Лёгкий пульс max" })}</span>
           <input
             inputMode="numeric"
             type="number"
@@ -318,13 +370,13 @@ export function SettingsPage() {
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Workout timing</h2>
-          <p className="muted">{currentTemplate?.name ?? "Loading workout"}</p>
+          <h2>{t({ en: "Workout timing", ru: "Время тренировки" })}</h2>
+          <p className="muted">{currentTemplate ? localizeTemplateName(currentTemplate.name, language) : t({ en: "Loading workout", ru: "Загрузка тренировки" })}</p>
         </div>
 
         <div className="form-grid two-column">
           <label>
-            <span className="field-label">Warmup, sec</span>
+            <span className="field-label">{t({ en: "Warmup, sec", ru: "Разминка, сек" })}</span>
             <input
               inputMode="numeric"
               type="number"
@@ -338,7 +390,7 @@ export function SettingsPage() {
             />
           </label>
           <label>
-            <span className="field-label">Run, sec</span>
+            <span className="field-label">{t({ en: "Run, sec", ru: "Бег, сек" })}</span>
             <input
               inputMode="numeric"
               type="number"
@@ -352,7 +404,7 @@ export function SettingsPage() {
             />
           </label>
           <label>
-            <span className="field-label">Walk, sec</span>
+            <span className="field-label">{t({ en: "Walk, sec", ru: "Шаг, сек" })}</span>
             <input
               inputMode="numeric"
               type="number"
@@ -366,7 +418,7 @@ export function SettingsPage() {
             />
           </label>
           <label>
-            <span className="field-label">Cooldown, sec</span>
+            <span className="field-label">{t({ en: "Cooldown, sec", ru: "Заминка, сек" })}</span>
             <input
               inputMode="numeric"
               type="number"
@@ -382,16 +434,16 @@ export function SettingsPage() {
         </div>
 
         {totalDurationSec !== undefined ? (
-          <p className="muted">Total time: {formatTime(totalDurationSec)}</p>
+          <p className="muted">{t({ en: "Total time", ru: "Всего времени" })}: {formatTime(totalDurationSec)}</p>
         ) : null}
       </section>
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Privacy</h2>
+          <h2>{t({ en: "Privacy", ru: "Приватность" })}</h2>
           <p className="muted">
             <a className="inline-link" href="/privacy.html">
-              Privacy policy
+              {t({ en: "Privacy policy", ru: "Политика приватности" })}
             </a>
           </p>
         </div>
@@ -403,13 +455,13 @@ export function SettingsPage() {
           onClick={() => void deleteProgress()}
         >
           <Trash2 aria-hidden="true" size={23} />
-          {isDeletingProfile ? "Deleting..." : "Delete progress"}
+          {isDeletingProfile ? t({ en: "Deleting...", ru: "Удаление..." }) : t({ en: "Delete progress", ru: "Удалить прогресс" })}
         </button>
       </section>
 
       <button className="primary-action" type="submit" disabled={isSaving}>
         <Save aria-hidden="true" size={26} />
-        {isSaving ? "Saving..." : "Save settings"}
+        {isSaving ? t({ en: "Saving...", ru: "Сохранение..." }) : t({ en: "Save settings", ru: "Сохранить настройки" })}
       </button>
 
       {status ? <p className="muted">{status}</p> : null}

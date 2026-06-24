@@ -2,10 +2,13 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App.js";
-import { applyTheme, getStoredTheme } from "./utils/theme.js";
+import { applyLanguage, getStoredLanguage } from "./utils/language.js";
+import { applyTheme, getStoredTheme, watchSystemTheme } from "./utils/theme.js";
 import "./styles.css";
 
+applyLanguage(getStoredLanguage());
 applyTheme(getStoredTheme());
+watchSystemTheme();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

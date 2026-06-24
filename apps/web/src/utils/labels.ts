@@ -1,59 +1,24 @@
 import type { BreathingLevel, PainType, WorkoutPhase } from "@run-walk-coach/shared";
+import type { AppLanguage } from "./language.js";
+import {
+  breathingLabel as localizedBreathingLabel,
+  formatDateTime as localizedFormatDateTime,
+  painLabel as localizedPainLabel,
+  phaseLabel as localizedPhaseLabel
+} from "./language.js";
 
-export function phaseLabel(phase: WorkoutPhase) {
-  switch (phase) {
-    case "WARMUP":
-      return "WARMUP";
-    case "RUN":
-      return "RUN";
-    case "WALK":
-      return "WALK";
-    case "COOLDOWN":
-      return "COOLDOWN";
-    case "DONE":
-      return "DONE";
-  }
+export function phaseLabel(phase: WorkoutPhase, language: AppLanguage = "en") {
+  return localizedPhaseLabel(phase, language);
 }
 
-export function breathingLabel(value: BreathingLevel) {
-  switch (value) {
-    case "EASY":
-      return "Easy";
-    case "MEDIUM":
-      return "Medium";
-    case "HARD":
-      return "Hard";
-    case "VERY_HARD":
-      return "Very hard";
-  }
+export function breathingLabel(value: BreathingLevel, language: AppLanguage = "en") {
+  return localizedBreathingLabel(value, language);
 }
 
-export function painLabel(value: PainType) {
-  switch (value) {
-    case "NONE":
-      return "None";
-    case "SHIN":
-      return "Shin";
-    case "KNEE":
-      return "Knee";
-    case "ACHILLES":
-      return "Achilles";
-    case "FOOT":
-      return "Foot";
-    case "HIP":
-      return "Hip";
-    case "BACK":
-      return "Back";
-    case "OTHER":
-      return "Other";
-  }
+export function painLabel(value: PainType, language: AppLanguage = "en") {
+  return localizedPainLabel(value, language);
 }
 
-export function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(value));
+export function formatDateTime(value: string, language: AppLanguage = "en") {
+  return localizedFormatDateTime(value, language);
 }

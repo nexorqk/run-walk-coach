@@ -2,6 +2,12 @@ import { AlertTriangle, Info, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { WorkoutSummary } from "../components/WorkoutSummary.js";
 import { useAppStore } from "../store/app-store.js";
+import {
+  localizeProgressionReason,
+  localizeTemplateName,
+  progressionActionLabel,
+  useLanguage
+} from "../utils/language.js";
 import { primePhaseAudio } from "../utils/phase-feedback.js";
 
 export function TodayPage() {
@@ -10,13 +16,14 @@ export function TodayPage() {
   const isLoading = useAppStore((state) => state.isLoading);
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const setActiveWorkoutTemplate = useAppStore((state) => state.setActiveWorkoutTemplate);
+  const { language, t } = useLanguage();
   const template = recommendation?.template;
 
   if (isLoading && !template) {
     return (
       <section className="empty-state">
         <div className="loader" />
-        <p>Loading workout...</p>
+        <p>{t({ en: "Loading workout...", ru: "Загрузка тренировки..." })}</p>
       </section>
     );
   }
@@ -24,7 +31,7 @@ export function TodayPage() {
   if (!template) {
     return (
       <section className="empty-state">
-        <p>No workout template is available.</p>
+        <p>{t({ en: "No workout template is available.", ru: "Шаблон тренировки недоступен." })}</p>
       </section>
     );
   }
@@ -38,29 +45,31 @@ export function TodayPage() {
   return (
     <div className="stack">
       <section className="hero-panel">
-        <div className="eyebrow">Today</div>
-        <h1>{template.name}</h1>
+        <div className="eyebrow">{t({ en: "Today", ru: "Сегодня" })}</div>
+        <h1>{localizeTemplateName(template.name, language)}</h1>
         <div className="badge-row">
-          <span className="badge">Level {template.level}</span>
-          <span className="badge">{recommendation?.action ?? "repeat"}</span>
+          <span className="badge">{t({ en: "Level", ru: "Уровень" })} {template.level}</span>
+          <span className="badge">{progressionActionLabel(recommendation?.action, language)}</span>
           <button className="badge info-badge" type="button" onClick={() => navigate("/settings")}>
             <Info aria-hidden="true" size={16} />
-            Time can be changed in Settings
+            {t({ en: "Time can be changed in Settings", ru: "Время меняется в настройках" })}
           </button>
         </div>
         {!serverSyncEnabled ? (
           <div className="warning-callout">
             <AlertTriangle aria-hidden="true" size={22} />
             <p>
-              Progress is saved only in this browser and can be lost if cache,
-              cookies, or site data are cleared.
+              {t({
+                en: "Progress is saved only in this browser and can be lost if cache, cookies, or site data are cleared.",
+                ru: "Прогресс хранится только в этом браузере и может пропасть при очистке кеша, cookies или данных сайта."
+              })}
             </p>
           </div>
         ) : null}
-        <p className="muted">{recommendation?.reason}</p>
+        <p className="muted">{localizeProgressionReason(recommendation?.reason, language)}</p>
         <button className="primary-action" type="button" onClick={startWorkout}>
           <Play aria-hidden="true" size={28} fill="currentColor" />
-          Start workout
+          {t({ en: "Start workout", ru: "Начать тренировку" })}
         </button>
       </section>
 

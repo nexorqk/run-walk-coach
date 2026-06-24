@@ -9,7 +9,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { saveSessionOfflineFirst } from "../sync/sync-sessions.js";
 import { useAppStore } from "../store/app-store.js";
-import { breathingLabel, painLabel } from "../utils/labels.js";
+import { breathingLabel, localizeTemplateName, painLabel, useLanguage } from "../utils/language.js";
 
 function optionalNumber(value: string) {
   return value.trim() === "" ? null : Number(value);
@@ -21,6 +21,7 @@ export function SessionReportPage() {
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const setWorkoutDraft = useAppStore((state) => state.setWorkoutDraft);
   const refreshRecommendation = useAppStore((state) => state.refreshRecommendation);
+  const { language, t } = useLanguage();
   const [difficulty, setDifficulty] = useState(5);
   const [avgHr, setAvgHr] = useState("");
   const [maxHr, setMaxHr] = useState("");
@@ -32,9 +33,9 @@ export function SessionReportPage() {
   if (!draft) {
     return (
       <section className="empty-state">
-        <p>No finished workout is waiting for a report.</p>
+        <p>{t({ en: "No finished workout is waiting for a report.", ru: "Нет завершённой тренировки для отчёта." })}</p>
         <Link className="inline-link" to="/today">
-          Go to today
+          {t({ en: "Go to today", ru: "Перейти на сегодня" })}
         </Link>
       </section>
     );
@@ -71,14 +72,14 @@ export function SessionReportPage() {
   return (
     <form className="stack" onSubmit={submit}>
       <section className="panel">
-        <div className="eyebrow">Report</div>
-        <h1>How did it feel?</h1>
-        <p className="muted">{draft.template.name}</p>
+        <div className="eyebrow">{t({ en: "Report", ru: "Отчёт" })}</div>
+        <h1>{t({ en: "How did it feel?", ru: "Как прошла тренировка?" })}</h1>
+        <p className="muted">{localizeTemplateName(draft.template.name, language)}</p>
       </section>
 
       <section className="form-section">
-        <label className="field-label">Difficulty</label>
-        <div className="difficulty-grid" role="group" aria-label="Difficulty 1 to 10">
+        <label className="field-label">{t({ en: "Difficulty", ru: "Сложность" })}</label>
+        <div className="difficulty-grid" role="group" aria-label={t({ en: "Difficulty 1 to 10", ru: "Сложность от 1 до 10" })}>
           {Array.from({ length: 10 }, (_, index) => index + 1).map((value) => (
             <button
               className={value === difficulty ? "difficulty active" : "difficulty"}
@@ -94,7 +95,7 @@ export function SessionReportPage() {
 
       <section className="form-section two-column">
         <label>
-          <span className="field-label">Avg HR</span>
+          <span className="field-label">{t({ en: "Avg HR", ru: "Средний пульс" })}</span>
           <input
             inputMode="numeric"
             min="30"
@@ -102,11 +103,11 @@ export function SessionReportPage() {
             type="number"
             value={avgHr}
             onChange={(event) => setAvgHr(event.target.value)}
-            placeholder="Optional"
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
           />
         </label>
         <label>
-          <span className="field-label">Max HR</span>
+          <span className="field-label">{t({ en: "Max HR", ru: "Макс. пульс" })}</span>
           <input
             inputMode="numeric"
             min="30"
@@ -114,31 +115,31 @@ export function SessionReportPage() {
             type="number"
             value={maxHr}
             onChange={(event) => setMaxHr(event.target.value)}
-            placeholder="Optional"
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
           />
         </label>
       </section>
 
       <section className="form-section two-column">
         <label>
-          <span className="field-label">Breathing</span>
+          <span className="field-label">{t({ en: "Breathing", ru: "Дыхание" })}</span>
           <select
             value={breathing}
             onChange={(event) => setBreathing(event.target.value as BreathingLevel)}
           >
             {breathingLevelValues.map((value) => (
               <option key={value} value={value}>
-                {breathingLabel(value)}
+                {breathingLabel(value, language)}
               </option>
             ))}
           </select>
         </label>
         <label>
-          <span className="field-label">Pain</span>
+          <span className="field-label">{t({ en: "Pain", ru: "Боль" })}</span>
           <select value={pain} onChange={(event) => setPain(event.target.value as PainType)}>
             {painTypeValues.map((value) => (
               <option key={value} value={value}>
-                {painLabel(value)}
+                {painLabel(value, language)}
               </option>
             ))}
           </select>
@@ -147,19 +148,19 @@ export function SessionReportPage() {
 
       <section className="form-section">
         <label>
-          <span className="field-label">Notes</span>
+          <span className="field-label">{t({ en: "Notes", ru: "Заметки" })}</span>
           <textarea
             rows={4}
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Optional"
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
           />
         </label>
       </section>
 
       <button className="primary-action" type="submit" disabled={isSaving}>
         <Save aria-hidden="true" size={26} />
-        {isSaving ? "Saving..." : "Save session"}
+        {isSaving ? t({ en: "Saving...", ru: "Сохранение..." }) : t({ en: "Save session", ru: "Сохранить тренировку" })}
       </button>
     </form>
   );

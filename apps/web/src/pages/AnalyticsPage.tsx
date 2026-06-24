@@ -5,6 +5,7 @@ import { getAnalyticsSummary } from "../api/client.js";
 import { WorkoutSummary } from "../components/WorkoutSummary.js";
 import { db } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
+import { localizeProgressionReason, localizeTemplateName, useLanguage } from "../utils/language.js";
 
 function startOfWeek(date: Date) {
   const start = new Date(date);
@@ -18,6 +19,7 @@ export function AnalyticsPage() {
   const recommendation = useAppStore((state) => state.recommendation);
   const refreshRecommendation = useAppStore((state) => state.refreshRecommendation);
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
+  const { language, t } = useLanguage();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -66,16 +68,21 @@ export function AnalyticsPage() {
 
   useEffect(() => {
     void refreshRecommendation().finally(load);
-  }, [serverSyncEnabled]);
+  }, [serverSyncEnabled, language]);
 
   return (
     <div className="stack">
       <section className="page-title-row">
         <div>
-          <div className="eyebrow">Analytics</div>
-          <h1>This week</h1>
+          <div className="eyebrow">{t({ en: "Analytics", ru: "Аналитика" })}</div>
+          <h1>{t({ en: "This week", ru: "Эта неделя" })}</h1>
         </div>
-        <button className="icon-button" type="button" onClick={() => void load()} title="Refresh analytics">
+        <button
+          className="icon-button"
+          type="button"
+          onClick={() => void load()}
+          title={t({ en: "Refresh analytics", ru: "Обновить аналитику" })}
+        >
           <RefreshCcw aria-hidden="true" size={24} />
         </button>
       </section>
@@ -84,50 +91,52 @@ export function AnalyticsPage() {
         <div className="warning-callout">
           <AlertTriangle aria-hidden="true" size={22} />
           <p>
-            Без входа через Google статистика хранится только в этом браузере. Если очистить
-            память браузера, кеш, cookies или site data, весь локальный прогресс будет удалён.
+            {t({
+              en: "Without Google login, stats are saved only in this browser. If browser storage, cache, cookies, or site data are cleared, all local progress will be deleted.",
+              ru: "Без входа через Google статистика хранится только в этом браузере. Если очистить память браузера, кеш, cookies или site data, весь локальный прогресс будет удалён."
+            })}
           </p>
         </div>
       ) : null}
 
-      {isLoading ? <p className="muted">Loading analytics...</p> : null}
+      {isLoading ? <p className="muted">{t({ en: "Loading analytics...", ru: "Загрузка аналитики..." })}</p> : null}
 
       {summary ? (
         <>
           <section className="summary-grid">
             <div className="metric">
-              <span className="metric-label">Sessions</span>
+              <span className="metric-label">{t({ en: "Sessions", ru: "Тренировки" })}</span>
               <strong>{summary.sessionsThisWeek}</strong>
             </div>
             <div className="metric">
-              <span className="metric-label">Duration</span>
+              <span className="metric-label">{t({ en: "Duration", ru: "Длительность" })}</span>
               <strong>{formatTime(summary.totalDurationThisWeekSec)}</strong>
             </div>
             <div className="metric">
-              <span className="metric-label">Run time</span>
+              <span className="metric-label">{t({ en: "Run time", ru: "Время бега" })}</span>
               <strong>{formatTime(summary.totalRunThisWeekSec)}</strong>
             </div>
             <div className="metric">
-              <span className="metric-label">Avg difficulty</span>
+              <span className="metric-label">{t({ en: "Avg difficulty", ru: "Средняя сложность" })}</span>
               <strong>{summary.averageDifficulty?.toFixed(1) ?? "-"}</strong>
             </div>
             <div className="metric metric-wide">
-              <span className="metric-label">Current level</span>
+              <span className="metric-label">{t({ en: "Current level", ru: "Текущий уровень" })}</span>
               <strong>{summary.currentLevel}</strong>
             </div>
           </section>
 
           <section className="panel">
-            <div className="eyebrow">Next</div>
-            <h2>{summary.next.template.name}</h2>
-            <p className="muted">{summary.next.reason}</p>
+            <div className="eyebrow">{t({ en: "Next", ru: "Дальше" })}</div>
+            <h2>{localizeTemplateName(summary.next.template.name, language)}</h2>
+            <p className="muted">{localizeProgressionReason(summary.next.reason, language)}</p>
           </section>
 
           <WorkoutSummary template={summary.next.template} />
         </>
       ) : !isLoading ? (
         <section className="empty-state">
-          <p>No analytics available.</p>
+          <p>{t({ en: "No analytics available.", ru: "Аналитика пока недоступна." })}</p>
         </section>
       ) : null}
     </div>

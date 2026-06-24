@@ -373,6 +373,10 @@ h2 {
   background: var(--surface-strong);
 }
 
+.segmented-control.three-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .segment-option {
   display: inline-flex;
   align-items: center;

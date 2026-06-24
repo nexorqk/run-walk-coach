@@ -14,7 +14,15 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { db, type LocalWorkoutSession } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
-import { breathingLabel, formatDateTime } from "../utils/labels.js";
+import {
+  breathingLabel,
+  formatDateTime,
+  localizeProgressionReason,
+  localizeTemplateName,
+  text,
+  type AppLanguage,
+  useLanguage
+} from "../utils/language.js";
 
 type PulseZone = {
   name: string;
@@ -161,37 +169,52 @@ function GuideList({ items }: { items: string[] }) {
   );
 }
 
-function pulseZones(easyMin: number, easyMax: number): PulseZone[] {
+function pulseZones(easyMin: number, easyMax: number, language: AppLanguage): PulseZone[] {
   return [
     {
-      name: "Recovery",
+      name: text(language, { en: "Recovery", ru: "Восстановление" }),
       range: `< ${easyMin}`,
       tone: "easy",
-      description: "Use this for warmup, cooldown, and days when legs feel heavy."
+      description: text(language, {
+        en: "Use this for warmup, cooldown, and days when legs feel heavy.",
+        ru: "Используй для разминки, заминки и дней, когда ноги тяжёлые."
+      })
     },
     {
-      name: "Easy run",
+      name: text(language, { en: "Easy run", ru: "Лёгкий бег" }),
       range: `${easyMin}-${easyMax}`,
       tone: "easy",
-      description: "Main development zone: breathing controlled, conversation possible."
+      description: text(language, {
+        en: "Main development zone: breathing controlled, conversation possible.",
+        ru: "Главная зона развития: дыхание контролируемое, разговор возможен."
+      })
     },
     {
-      name: "Steady",
+      name: text(language, { en: "Steady", ru: "Устойчиво" }),
       range: `${easyMax + 1}-${easyMax + 15}`,
       tone: "steady",
-      description: "Useful in small doses, but not the target for most run-walk sessions."
+      description: text(language, {
+        en: "Useful in small doses, but not the target for most run-walk sessions.",
+        ru: "Полезно малыми дозами, но не цель большинства бег-шаг тренировок."
+      })
     },
     {
-      name: "Hard",
+      name: text(language, { en: "Hard", ru: "Тяжело" }),
       range: `${easyMax + 16}-${easyMax + 30}`,
       tone: "hard",
-      description: "Short efforts only. Repeat the level if this appears often."
+      description: text(language, {
+        en: "Short efforts only. Repeat the level if this appears often.",
+        ru: "Только короткие отрезки. Повторяй уровень, если это часто появляется."
+      })
     },
     {
-      name: "Too high",
+      name: text(language, { en: "Too high", ru: "Слишком высоко" }),
       range: `> ${easyMax + 30}`,
       tone: "alert",
-      description: "Back off to walking until breathing and pulse settle."
+      description: text(language, {
+        en: "Back off to walking until breathing and pulse settle.",
+        ru: "Переходи на шаг, пока дыхание и пульс не успокоятся."
+      })
     }
   ];
 }
@@ -200,55 +223,90 @@ function currentPulseAdvice(
   heartRate: number | undefined,
   breathing: BreathingLevel,
   easyMin: number,
-  easyMax: number
+  easyMax: number,
+  language: AppLanguage
 ) {
   if (!heartRate) {
-    return "Enter current heart rate during or after a workout for a pacing cue.";
+    return text(language, {
+      en: "Enter current heart rate during or after a workout for a pacing cue.",
+      ru: "Введи текущий пульс во время или после отрезка, чтобы получить подсказку."
+    });
   }
 
   if (heartRate > easyMax + 30 || breathing === "VERY_HARD") {
-    return "Switch to walking now. Resume running only after pulse and breathing drop back under control.";
+    return text(language, {
+      en: "Switch to walking now. Resume running only after pulse and breathing drop back under control.",
+      ru: "Переходи на шаг. Возвращай бег только когда пульс и дыхание снова под контролем."
+    });
   }
 
   if (heartRate > easyMax || breathing === "HARD") {
-    return "Slow the run segment or extend the next walk. The goal is controlled effort, not speed.";
+    return text(language, {
+      en: "Slow the run segment or extend the next walk. The goal is controlled effort, not speed.",
+      ru: "Замедли беговой отрезок или продли следующий шаг. Цель - контроль усилия, не скорость."
+    });
   }
 
   if (heartRate < easyMin && breathing === "EASY") {
-    return "You are below the easy target. Stay relaxed, or progress only if the full workout feels controlled.";
+    return text(language, {
+      en: "You are below the easy target. Stay relaxed, or progress only if the full workout feels controlled.",
+      ru: "Ты ниже лёгкого диапазона. Оставайся расслабленным, прогрессируй только если вся тренировка контролируемая."
+    });
   }
 
-  return "Good training zone. Keep the current rhythm and finish with the same control.";
+  return text(language, {
+    en: "Good training zone. Keep the current rhythm and finish with the same control.",
+    ru: "Хорошая тренировочная зона. Держи текущий ритм и закончи с тем же контролем."
+  });
 }
 
-function latestSessionCue(session: LocalWorkoutSession | undefined) {
+function latestSessionCue(session: LocalWorkoutSession | undefined, language: AppLanguage) {
   if (!session) {
-    return "Complete a workout report to unlock feedback from your own sessions.";
+    return text(language, {
+      en: "Complete a workout report to unlock feedback from your own sessions.",
+      ru: "Заполни отчёт после тренировки, чтобы получать обратную связь по своим данным."
+    });
   }
 
   if (session.pain !== "NONE") {
-    return "Pain was reported last time. Keep the next session easier and stop if pain changes your stride.";
+    return text(language, {
+      en: "Pain was reported last time. Keep the next session easier and stop if pain changes your stride.",
+      ru: "В прошлый раз была боль. Следующую тренировку сделай легче и остановись, если боль меняет шаг."
+    });
   }
 
   if (session.difficulty >= 8 || session.breathing === "VERY_HARD") {
-    return "The last session was too demanding. Repeat the level and make the walk breaks calmer.";
+    return text(language, {
+      en: "The last session was too demanding. Repeat the level and make the walk breaks calmer.",
+      ru: "Прошлая тренировка была слишком тяжёлой. Повтори уровень и сделай шаговые паузы спокойнее."
+    });
   }
 
   if (session.maxHr !== null && session.maxHr !== undefined && session.maxHr >= 170) {
-    return "Max pulse was high last time. Start slower and protect the first half of the workout.";
+    return text(language, {
+      en: "Max pulse was high last time. Start slower and protect the first half of the workout.",
+      ru: "Максимальный пульс был высоким. Начни медленнее и береги первую половину тренировки."
+    });
   }
 
   if (session.difficulty <= 6 && ["EASY", "MEDIUM", "HARD"].includes(session.breathing)) {
-    return "Last session looked controlled. One more controlled session at this level supports progression.";
+    return text(language, {
+      en: "Last session looked controlled. One more controlled session at this level supports progression.",
+      ru: "Прошлая тренировка выглядела контролируемой. Ещё одна такая тренировка на уровне поддержит прогресс."
+    });
   }
 
-  return "Repeat the current level until effort, breathing, and pulse are predictable.";
+  return text(language, {
+    en: "Repeat the current level until effort, breathing, and pulse are predictable.",
+    ru: "Повторяй текущий уровень, пока усилие, дыхание и пульс не станут предсказуемыми."
+  });
 }
 
 export function CoachPage() {
   const profile = useAppStore((state) => state.profile);
   const recommendation = useAppStore((state) => state.recommendation);
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
+  const { language, t } = useLanguage();
   const [latestSession, setLatestSession] = useState<LocalWorkoutSession>();
   const [heartRateInput, setHeartRateInput] = useState("");
   const [breathing, setBreathing] = useState<BreathingLevel>("MEDIUM");
@@ -257,7 +315,7 @@ export function CoachPage() {
   const practicalHrMax = Math.min(easyMax, 145);
   const practicalHrRange = easyMin <= practicalHrMax ? `${easyMin}-${practicalHrMax}` : `${easyMin}-${easyMax}`;
   const currentHeartRate = heartRateInput.trim() === "" ? undefined : Number(heartRateInput);
-  const zones = useMemo(() => pulseZones(easyMin, easyMax), [easyMin, easyMax]);
+  const zones = useMemo(() => pulseZones(easyMin, easyMax, language), [easyMin, easyMax, language]);
 
   useEffect(() => {
     void db.sessions
@@ -271,10 +329,12 @@ export function CoachPage() {
     <div className="stack">
       <section className="hero-panel">
         <div className="eyebrow">Coach</div>
-        <h1>Pulse and running guide</h1>
+        <h1>{t({ en: "Pulse and running guide", ru: "Пульс и беговой гид" })}</h1>
         <p className="muted">
-          Keep most work in the easy zone, progress after controlled sessions, and use walk breaks
-          before pulse turns into a fight.
+          {t({
+            en: "Keep most work in the easy zone, progress after controlled sessions, and use walk breaks before pulse turns into a fight.",
+            ru: "Держи основную работу в лёгкой зоне, прогрессируй после контролируемых тренировок и переходи на шаг до того, как пульс станет борьбой."
+          })}
         </p>
         <div className="badge-row">
           <span className="badge">
@@ -283,20 +343,20 @@ export function CoachPage() {
           </span>
           <span className="badge">
             <Activity aria-hidden="true" size={16} />
-            {serverSyncEnabled ? "Google sync on" : "Local only"}
+            {serverSyncEnabled ? t({ en: "Google sync on", ru: "Google sync включён" }) : t({ en: "Local only", ru: "Только локально" })}
           </span>
         </div>
       </section>
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Live pacing cue</h2>
-          <p className="muted">Use this during a workout or right after a run segment.</p>
+          <h2>{t({ en: "Live pacing cue", ru: "Подсказка по темпу" })}</h2>
+          <p className="muted">{t({ en: "Use this during a workout or right after a run segment.", ru: "Используй во время тренировки или сразу после бегового отрезка." })}</p>
         </div>
 
         <div className="form-grid two-column">
           <label>
-            <span className="field-label">Current HR</span>
+            <span className="field-label">{t({ en: "Current HR", ru: "Текущий пульс" })}</span>
             <input
               inputMode="numeric"
               type="number"
@@ -308,11 +368,11 @@ export function CoachPage() {
             />
           </label>
           <label>
-            <span className="field-label">Breathing</span>
+            <span className="field-label">{t({ en: "Breathing", ru: "Дыхание" })}</span>
             <select value={breathing} onChange={(event) => setBreathing(event.target.value as BreathingLevel)}>
               {breathingLevelValues.map((value) => (
                 <option key={value} value={value}>
-                  {breathingLabel(value)}
+                  {breathingLabel(value, language)}
                 </option>
               ))}
             </select>
@@ -321,32 +381,32 @@ export function CoachPage() {
 
         <div className="coach-callout">
           <Gauge aria-hidden="true" size={24} />
-          <p>{currentPulseAdvice(currentHeartRate, breathing, easyMin, easyMax)}</p>
+          <p>{currentPulseAdvice(currentHeartRate, breathing, easyMin, easyMax, language)}</p>
         </div>
       </section>
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Today focus</h2>
-          <p className="muted">{recommendation?.template.name ?? "Current workout"}</p>
+          <h2>{t({ en: "Today focus", ru: "Фокус на сегодня" })}</h2>
+          <p className="muted">{recommendation ? localizeTemplateName(recommendation.template.name, language) : t({ en: "Current workout", ru: "Текущая тренировка" })}</p>
         </div>
         <div className="coach-callout">
           <TrendingUp aria-hidden="true" size={24} />
-          <p>{recommendation?.reason ?? "Stay easy and keep the run segments repeatable."}</p>
+          <p>{localizeProgressionReason(recommendation?.reason, language) ?? t({ en: "Stay easy and keep the run segments repeatable.", ru: "Держи лёгкое усилие и повторяемые беговые отрезки." })}</p>
         </div>
         {recommendation ? (
           <p className="muted">
-            Target: {formatTime(recommendation.template.runSec)} run /{" "}
-            {formatTime(recommendation.template.walkSec)} walk. If pulse rises above {easyMax},
-            shorten the run or make the walk slower.
+            {t({ en: "Target", ru: "Цель" })}: {formatTime(recommendation.template.runSec)} {t({ en: "run", ru: "бег" })} /{" "}
+            {formatTime(recommendation.template.walkSec)} {t({ en: "walk", ru: "шаг" })}. {t({ en: "If pulse rises above", ru: "Если пульс поднимается выше" })} {easyMax},
+            {t({ en: "shorten the run or make the walk slower.", ru: "сократи бег или сделай шаг медленнее." })}
           </p>
         ) : null}
       </section>
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Pulse zones</h2>
-          <p className="muted">Based on your easy HR range in Settings.</p>
+          <h2>{t({ en: "Pulse zones", ru: "Пульсовые зоны" })}</h2>
+          <p className="muted">{t({ en: "Based on your easy HR range in Settings.", ru: "На основе лёгкого диапазона пульса из настроек." })}</p>
         </div>
         <div className="zone-list">
           {zones.map((zone) => (
@@ -363,14 +423,14 @@ export function CoachPage() {
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>Last session readout</h2>
+          <h2>{t({ en: "Last session readout", ru: "Последняя тренировка" })}</h2>
           <p className="muted">
-            {latestSession ? formatDateTime(latestSession.date) : "No report yet"}
+            {latestSession ? formatDateTime(latestSession.date, language) : t({ en: "No report yet", ru: "Отчёта пока нет" })}
           </p>
         </div>
         <div className="coach-callout">
           <Footprints aria-hidden="true" size={24} />
-          <p>{latestSessionCue(latestSession)}</p>
+          <p>{latestSessionCue(latestSession, language)}</p>
         </div>
       </section>
 

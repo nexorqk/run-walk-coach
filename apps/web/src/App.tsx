@@ -17,29 +17,32 @@ import { TodayPage } from "./pages/TodayPage.js";
 import { WorkoutPage } from "./pages/WorkoutPage.js";
 import { retryPendingSessions } from "./sync/sync-sessions.js";
 import { useAppStore } from "./store/app-store.js";
+import { useLanguage } from "./utils/language.js";
 
 function BottomNav() {
+  const { t } = useLanguage();
+
   return (
     <nav className="bottom-nav" aria-label="Primary navigation">
       <NavLink to="/today" className="nav-item">
         <CalendarDays aria-hidden="true" size={23} />
-        <span>Today</span>
+        <span>{t({ en: "Today", ru: "Сегодня" })}</span>
       </NavLink>
       <NavLink to="/coach" className="nav-item">
         <HeartPulse aria-hidden="true" size={23} />
-        <span>Coach</span>
+        <span>{t({ en: "Coach", ru: "Тренер" })}</span>
       </NavLink>
       <NavLink to="/history" className="nav-item">
         <History aria-hidden="true" size={23} />
-        <span>History</span>
+        <span>{t({ en: "History", ru: "История" })}</span>
       </NavLink>
       <NavLink to="/analytics" className="nav-item">
         <BarChart3 aria-hidden="true" size={23} />
-        <span>Stats</span>
+        <span>{t({ en: "Stats", ru: "Статы" })}</span>
       </NavLink>
       <NavLink to="/settings" className="nav-item">
         <Settings aria-hidden="true" size={23} />
-        <span>Settings</span>
+        <span>{t({ en: "Settings", ru: "Настройки" })}</span>
       </NavLink>
     </nav>
   );
@@ -48,6 +51,7 @@ function BottomNav() {
 export function App() {
   const location = useLocation();
   const loadInitialData = useAppStore((state) => state.loadInitialData);
+  const { t } = useLanguage();
   const isWorkout = location.pathname.startsWith("/workout");
   const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
 
@@ -102,7 +106,7 @@ export function App() {
         ) : (
           <section className="empty-state">
             <div className="loader" />
-            <p>Loading...</p>
+            <p>{t({ en: "Loading...", ru: "Загрузка..." })}</p>
           </section>
         )}
       </main>

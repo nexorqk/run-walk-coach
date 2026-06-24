@@ -8,7 +8,7 @@ import {
 import { CheckCircle2, Pause, Play, Square } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { phaseLabel } from "../utils/labels.js";
+import { localizeTemplateName, phaseLabel, useLanguage } from "../utils/language.js";
 import { triggerPhaseChangeFeedback } from "../utils/phase-feedback.js";
 import { useAppStore } from "../store/app-store.js";
 
@@ -24,6 +24,7 @@ export function WorkoutPage() {
   const recommendation = useAppStore((state) => state.recommendation);
   const loadInitialData = useAppStore((state) => state.loadInitialData);
   const setWorkoutDraft = useAppStore((state) => state.setWorkoutDraft);
+  const { language, t } = useLanguage();
   const recommendedTemplate = recommendation?.template;
 
   const template =
@@ -80,7 +81,7 @@ export function WorkoutPage() {
   if (!template || !timeline || !state) {
     return (
       <main className="workout-screen phase-warmup">
-        <div className="workout-loading">Loading...</div>
+        <div className="workout-loading">{t({ en: "Loading...", ru: "Загрузка..." })}</div>
       </main>
     );
   }
@@ -126,20 +127,22 @@ export function WorkoutPage() {
     <main className={`workout-screen phase-${state.phase.toLowerCase()}`}>
       {transitionPhase ? (
         <div className="phase-transition" key={phaseKey} aria-hidden="true">
-          <span>{phaseLabel(transitionPhase)}</span>
+          <span>{phaseLabel(transitionPhase, language)}</span>
         </div>
       ) : null}
 
       <div className="workout-topline">
-        <span>{template.name}</span>
+        <span>{localizeTemplateName(template.name, language)}</span>
         <span>{formatTime(state.elapsedSec)}</span>
       </div>
 
       <section className="timer-stage" key={phaseKey} aria-live="polite">
-        <div className="phase-name">{phaseLabel(state.phase)}</div>
+        <div className="phase-name">{phaseLabel(state.phase, language)}</div>
         <div className="timer-value">{formatTime(state.remainingSec)}</div>
         <div className="repeat-line">
-          {state.repeatIndex ? `Repeat ${state.repeatIndex} / ${state.totalRepeats}` : "Steady start"}
+          {state.repeatIndex
+            ? `${t({ en: "Repeat", ru: "Повтор" })} ${state.repeatIndex} / ${state.totalRepeats}`
+            : t({ en: "Steady start", ru: "Спокойный старт" })}
         </div>
       </section>
 
@@ -149,23 +152,33 @@ export function WorkoutPage() {
 
       <section className="timer-meta">
         <div>
-          <span>Next</span>
-          <strong>{phaseLabel(state.nextPhase)}</strong>
+          <span>{t({ en: "Next", ru: "Дальше" })}</span>
+          <strong>{phaseLabel(state.nextPhase, language)}</strong>
         </div>
         <div>
-          <span>Total</span>
+          <span>{t({ en: "Total", ru: "Всего" })}</span>
           <strong>{formatTime(timeline.totalDurationSec)}</strong>
         </div>
       </section>
 
       <div className="workout-controls">
-        <button className="control-button" type="button" onClick={togglePause} title={isPaused ? "Resume" : "Pause"}>
+        <button
+          className="control-button"
+          type="button"
+          onClick={togglePause}
+          title={isPaused ? t({ en: "Resume", ru: "Продолжить" }) : t({ en: "Pause", ru: "Пауза" })}
+        >
           {isPaused ? <Play aria-hidden="true" size={30} fill="currentColor" /> : <Pause aria-hidden="true" size={30} />}
-          <span>{isPaused ? "Resume" : "Pause"}</span>
+          <span>{isPaused ? t({ en: "Resume", ru: "Продолжить" }) : t({ en: "Pause", ru: "Пауза" })}</span>
         </button>
-        <button className="control-button finish" type="button" onClick={finishWorkout} title="Finish workout">
+        <button
+          className="control-button finish"
+          type="button"
+          onClick={finishWorkout}
+          title={t({ en: "Finish workout", ru: "Завершить тренировку" })}
+        >
           {state.isDone ? <CheckCircle2 aria-hidden="true" size={30} /> : <Square aria-hidden="true" size={28} fill="currentColor" />}
-          <span>{state.isDone ? "Report" : "Finish"}</span>
+          <span>{state.isDone ? t({ en: "Report", ru: "Отчёт" }) : t({ en: "Finish", ru: "Финиш" })}</span>
         </button>
       </div>
     </main>
