@@ -1,5 +1,5 @@
 import { buildWorkoutTimeline, formatTime, type AuthProviders } from "@run-walk-coach/shared";
-import { AlertTriangle, LogIn, Save, Trash2 } from "lucide-react";
+import { AlertTriangle, LogIn, Moon, Save, Sun, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import {
   deleteProfile,
@@ -10,6 +10,7 @@ import {
 } from "../api/client.js";
 import { db } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
+import { getStoredTheme, setStoredTheme, type AppTheme } from "../utils/theme.js";
 
 const LOCAL_PROFILE_KEY = "runWalkCoach.localProfile";
 const LOCAL_TEMPLATES_KEY = "runWalkCoach.localTemplates";
@@ -33,6 +34,7 @@ export function SettingsPage() {
   const [status, setStatus] = useState("");
   const [authStatus, setAuthStatus] = useState("");
   const [authProviders, setAuthProviders] = useState<AuthProviders>();
+  const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [isSaving, setIsSaving] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const currentTemplate = recommendation?.template;
@@ -153,6 +155,11 @@ export function SettingsPage() {
     setter(String(Number(value)));
   };
 
+  const changeTheme = (nextTheme: AppTheme) => {
+    setTheme(nextTheme);
+    setStoredTheme(nextTheme);
+  };
+
   const deleteProgress = async () => {
     const confirmed = window.confirm(
       serverSyncEnabled
@@ -229,6 +236,33 @@ export function SettingsPage() {
           <p className="muted">Google login is not configured on this server.</p>
         ) : null}
         {authStatus ? <p className="muted">{authStatus}</p> : null}
+      </section>
+
+      <section className="form-section">
+        <div className="section-heading">
+          <h2>Display</h2>
+          <p className="muted">Choose the app theme for this browser.</p>
+        </div>
+        <div className="segmented-control" role="group" aria-label="Theme">
+          <button
+            className={`segment-option ${theme === "light" ? "active" : ""}`}
+            type="button"
+            aria-pressed={theme === "light"}
+            onClick={() => changeTheme("light")}
+          >
+            <Sun aria-hidden="true" size={20} />
+            Light
+          </button>
+          <button
+            className={`segment-option ${theme === "dark" ? "active" : ""}`}
+            type="button"
+            aria-pressed={theme === "dark"}
+            onClick={() => changeTheme("dark")}
+          >
+            <Moon aria-hidden="true" size={20} />
+            Dark
+          </button>
+        </div>
       </section>
 
       <section className="form-section two-column">

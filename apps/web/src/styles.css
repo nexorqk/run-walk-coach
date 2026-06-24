@@ -1,4 +1,23 @@
 :root {
+  color-scheme: light;
+  --bg: #f7f9fb;
+  --surface: #ffffff;
+  --surface-strong: #eef3f1;
+  --line: #d6dfdb;
+  --text: #17201c;
+  --muted: #5d6c65;
+  --accent: #2f9e44;
+  --accent-text: #f8fff8;
+  --amber: #b7791f;
+  --danger: #d64545;
+  --danger-text: #fff7f7;
+  --focus: #2563eb;
+  --chrome-line: rgba(23, 32, 28, 0.1);
+  --nav-bg: rgba(247, 249, 251, 0.96);
+  --overlay-shadow: rgba(21, 31, 26, 0.18);
+}
+
+:root[data-theme="dark"] {
   color-scheme: dark;
   --bg: #101114;
   --surface: #1b1d20;
@@ -10,7 +29,11 @@
   --accent-text: #11130f;
   --amber: #ffbe0b;
   --danger: #ff6868;
+  --danger-text: #170c0c;
   --focus: #71c7ff;
+  --chrome-line: rgba(255, 255, 255, 0.08);
+  --nav-bg: rgba(16, 17, 20, 0.95);
+  --overlay-shadow: rgba(0, 0, 0, 0.28);
 }
 
 * {
@@ -87,7 +110,7 @@ h2 {
   margin: 0 -16px;
   padding: env(safe-area-inset-top) 16px 0;
   background: color-mix(in srgb, var(--bg) 92%, transparent);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--chrome-line);
   backdrop-filter: blur(14px);
 }
 
@@ -262,7 +285,7 @@ h2 {
 
 .secondary-action.danger {
   background: var(--danger);
-  color: #170c0c;
+  color: var(--danger-text);
 }
 
 .icon-button {
@@ -322,8 +345,8 @@ h2 {
   gap: 6px;
   min-height: calc(76px + env(safe-area-inset-bottom));
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-  background: rgba(16, 17, 20, 0.95);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--nav-bg);
+  border-top: 1px solid var(--chrome-line);
   backdrop-filter: blur(16px);
 }
 
@@ -338,6 +361,35 @@ h2 {
   font-size: 0.78rem;
   font-weight: 800;
   text-decoration: none;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-strong);
+}
+
+.segment-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.segment-option.active {
+  background: var(--surface);
+  color: var(--text);
 }
 
 .coach-callout {
@@ -660,7 +712,7 @@ h2 {
   line-height: 1;
   text-align: center;
   white-space: nowrap;
-  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 20px 52px var(--overlay-shadow);
 }
 
 .phase-name {
@@ -766,7 +818,7 @@ h2 {
 
 .control-button.finish {
   background: var(--danger);
-  color: #170c0c;
+  color: var(--danger-text);
 }
 
 .workout-loading {
