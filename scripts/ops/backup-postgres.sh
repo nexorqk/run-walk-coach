@@ -12,6 +12,7 @@ MIN_BACKUP_BYTES="${MIN_BACKUP_BYTES:-1024}"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_FILE="${BACKUP_DIR}/runwalk-${TIMESTAMP}.dump"
 TMP_FILE="${BACKUP_FILE}.tmp"
+OFFSITE_BACKUP_SCRIPT="${OFFSITE_BACKUP_SCRIPT:-/usr/local/sbin/run-walk-coach-offsite-backup}"
 
 cleanup() {
   rm -f "$TMP_FILE"
@@ -42,5 +43,9 @@ mv "$TMP_FILE" "$BACKUP_FILE"
 ln -sfn "$(basename "$BACKUP_FILE")" "${BACKUP_DIR}/latest.dump"
 
 find "$BACKUP_DIR" -type f -name "runwalk-*.dump" -mtime +"$BACKUP_RETENTION_DAYS" -delete
+
+if [ -x "$OFFSITE_BACKUP_SCRIPT" ]; then
+  "$OFFSITE_BACKUP_SCRIPT" "$BACKUP_FILE"
+fi
 
 printf '%s\n' "$BACKUP_FILE"

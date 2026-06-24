@@ -23,6 +23,27 @@ export function googleLoginUrl() {
   return `${API_BASE}/auth/google/start`;
 }
 
+export type ClientErrorReport = {
+  message: string;
+  stack?: string;
+  source?: string;
+  path?: string;
+  userAgent?: string;
+  language?: string;
+};
+
+export function reportClientError(payload: ClientErrorReport) {
+  return fetch(`${API_BASE}/client-errors`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    keepalive: true,
+    body: JSON.stringify(payload)
+  }).catch(() => undefined);
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
 

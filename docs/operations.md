@@ -59,6 +59,25 @@ systemctl start run-walk-coach-backup.service
 The timer runs daily at 03:45 with a randomized delay. The backup script keeps
 `runwalk-*.dump` files for `BACKUP_RETENTION_DAYS` and updates `latest.dump`.
 
+Offsite backups are supported but require external credentials. Configure one of
+these in `/etc/run-walk-coach/ops.env`:
+
+```env
+OFFSITE_BACKUP_TARGET=rclone-remote:run-walk-coach/postgres
+OFFSITE_BACKUP_COMMAND=
+OFFSITE_BACKUP_REQUIRED=true
+```
+
+or:
+
+```env
+OFFSITE_BACKUP_COMMAND='aws s3 cp "$BACKUP_FILE" s3://example-bucket/run-walk-coach/postgres/'
+OFFSITE_BACKUP_REQUIRED=true
+```
+
+When enabled, the backup job writes `/var/lib/run-walk-coach/offsite-backup.last`.
+The monitor checks this marker only when `OFFSITE_BACKUP_REQUIRED=true`.
+
 ## Restore Drill
 
 Restore drills run weekly into a temporary database and do not touch production data.
@@ -85,7 +104,8 @@ tail -n 100 /var/log/run-walk-coach/alerts.log
 ```
 
 The monitor checks API readiness, API 5xx responses in nginx access logs, disk usage,
-latest backup age, expected Docker services, and the log collector unit.
+latest backup age, expected Docker services, the log collector unit, and optional
+offsite backup age.
 
 Minimum alerts:
 
@@ -98,6 +118,19 @@ Minimum alerts:
 Alerts are always written to journald and `/var/log/run-walk-coach/alerts.log`. Set
 `ALERT_WEBHOOK_URL` in `/etc/run-walk-coach/ops.env` to also deliver JSON alerts to
 an external collector.
+
+Client runtime errors are posted to `POST /api/client-errors`, rate-limited, and
+written to API logs. They are visible through the log collector:
+
+```bash
+journalctl -u run-walk-coach-logs.service --no-pager | rg "Client runtime error"
+```
+
+## Network Exposure
+
+In production, Docker-published API and Postgres ports are bound to `127.0.0.1`
+only. Public access should go through nginx on `80/443`; the database must not be
+reachable from the public internet.
 
 ## Maintenance
 

@@ -41,6 +41,8 @@ If local port `5432` is already taken, run Postgres on another port and update `
 POSTGRES_PORT=5433 docker compose up -d postgres
 ```
 
+Docker publishes the local Postgres and API ports on `127.0.0.1` only. Public traffic should go through nginx on `80/443`.
+
 Default local database URL:
 
 ```env

@@ -12,6 +12,9 @@ BACKUP_DIR="${BACKUP_DIR:-/var/backups/run-walk-coach/postgres}"
 BACKUP_MAX_AGE_HOURS="${BACKUP_MAX_AGE_HOURS:-26}"
 SEND_ALERT="${SEND_ALERT:-/usr/local/sbin/run-walk-coach-send-alert}"
 LOG_COLLECTOR_UNIT="${LOG_COLLECTOR_UNIT:-run-walk-coach-logs.service}"
+OFFSITE_BACKUP_REQUIRED="${OFFSITE_BACKUP_REQUIRED:-false}"
+OFFSITE_BACKUP_STATE="${OFFSITE_BACKUP_STATE:-/var/lib/run-walk-coach/offsite-backup.last}"
+OFFSITE_BACKUP_MAX_AGE_HOURS="${OFFSITE_BACKUP_MAX_AGE_HOURS:-26}"
 
 ISSUES=""
 
@@ -69,6 +72,21 @@ else
 
   if [ "$BACKUP_AGE_SECONDS" -gt "$BACKUP_MAX_AGE_SECONDS" ]; then
     append_issue "Latest backup age is $((BACKUP_AGE_SECONDS / 3600))h, threshold ${BACKUP_MAX_AGE_HOURS}h"
+  fi
+fi
+
+if [ "$OFFSITE_BACKUP_REQUIRED" = "true" ]; then
+  if [ ! -f "$OFFSITE_BACKUP_STATE" ]; then
+    append_issue "Offsite backup is required but no success marker exists: ${OFFSITE_BACKUP_STATE}"
+  else
+    OFFSITE_BACKUP_EPOCH="$(stat -c %Y "$OFFSITE_BACKUP_STATE")"
+    NOW_EPOCH="$(date +%s)"
+    OFFSITE_BACKUP_AGE_SECONDS=$((NOW_EPOCH - OFFSITE_BACKUP_EPOCH))
+    OFFSITE_BACKUP_MAX_AGE_SECONDS=$((OFFSITE_BACKUP_MAX_AGE_HOURS * 3600))
+
+    if [ "$OFFSITE_BACKUP_AGE_SECONDS" -gt "$OFFSITE_BACKUP_MAX_AGE_SECONDS" ]; then
+      append_issue "Latest offsite backup marker age is $((OFFSITE_BACKUP_AGE_SECONDS / 3600))h, threshold ${OFFSITE_BACKUP_MAX_AGE_HOURS}h"
+    fi
   fi
 fi
 

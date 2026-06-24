@@ -4,6 +4,7 @@ import {
   UpdateUserProfileSchema,
   UpdateWorkoutTemplateSchema
 } from "@run-walk-coach/shared";
+import { z } from "zod";
 import {
   beginGoogleLogin,
   completeGoogleLogin,
@@ -22,6 +23,15 @@ function validationError(reply: FastifyReply, issues: unknown) {
     issues
   });
 }
+
+const ClientErrorSchema = z.object({
+  message: z.string().trim().min(1).max(2000),
+  stack: z.string().max(10000).optional(),
+  source: z.string().max(200).optional(),
+  path: z.string().max(500).optional(),
+  userAgent: z.string().max(500).optional(),
+  language: z.string().max(20).optional()
+});
 
 function startOfWeek(date: Date) {
   const start = new Date(date);
@@ -84,6 +94,35 @@ export async function registerRoutes(app: FastifyInstance) {
       nodeEnv: env.nodeEnv
     }));
   }
+
+  app.post(
+    "/api/client-errors",
+    {
+      config: {
+        rateLimit: {
+          max: 20,
+          timeWindow: 5 * 60_000
+        }
+      }
+    },
+    async (request, reply) => {
+      const parsed = ClientErrorSchema.safeParse(request.body);
+
+      if (!parsed.success) {
+        return validationError(reply, parsed.error.issues);
+      }
+
+      request.log.warn(
+        {
+          clientError: parsed.data,
+          requestId: request.id
+        },
+        "Client runtime error"
+      );
+
+      return reply.status(204).send();
+    }
+  );
 
   app.get("/api/profile", async (request, reply) => requireCurrentUser(request, reply));
 
