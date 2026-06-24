@@ -240,6 +240,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     try {
       const profile = await getProfile();
+      if (!profile.googleLinkedAt) {
+        throw new Error("Google account required for server sync");
+      }
+
       const [templates, recommendation] = await Promise.all([
         getWorkoutTemplates(),
         getNextProgression()

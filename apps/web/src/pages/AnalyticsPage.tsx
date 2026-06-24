@@ -84,8 +84,8 @@ export function AnalyticsPage() {
         <div className="warning-callout">
           <AlertTriangle aria-hidden="true" size={22} />
           <p>
-            Progress is saved only in this browser. If browser storage is cleared,
-            all local stats will be deleted.
+            Без входа через Google статистика хранится только в этом браузере. Если очистить
+            память браузера, кеш, cookies или site data, весь локальный прогресс будет удалён.
           </p>
         </div>
       ) : null}

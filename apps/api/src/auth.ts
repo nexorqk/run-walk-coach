@@ -242,6 +242,11 @@ export async function requireCurrentUser(request: FastifyRequest, reply: Fastify
     return undefined;
   }
 
+  if (!user.googleId) {
+    void reply.status(401).send({ error: "GoogleAuthenticationRequired" });
+    return undefined;
+  }
+
   return user;
 }
 

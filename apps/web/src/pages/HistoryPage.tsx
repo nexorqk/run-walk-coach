@@ -104,8 +104,8 @@ export function HistoryPage() {
         <div className="warning-callout">
           <AlertTriangle aria-hidden="true" size={22} />
           <p>
-            Progress is saved only in this browser. If browser storage is cleared,
-            all local history will be deleted.
+            Без входа через Google история хранится только в этом браузере. Если очистить
+            память браузера, кеш, cookies или site data, весь локальный прогресс будет удалён.
           </p>
         </div>
       ) : null}
