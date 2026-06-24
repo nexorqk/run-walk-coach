@@ -1,9 +1,11 @@
-const CACHE_NAME = "runwalk-coach-v2";
+const CACHE_NAME = "runwalk-coach-v3";
 const CORE_ASSETS = [
   "/",
   "/today",
   "/index.html",
+  "/bootstrap-v1.js",
   "/privacy.html",
+  "/privacy-v1.css",
   "/manifest.webmanifest",
   "/icon.svg",
   "/icon-192.png",

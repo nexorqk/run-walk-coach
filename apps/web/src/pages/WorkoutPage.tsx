@@ -146,9 +146,7 @@ export function WorkoutPage() {
         </div>
       </section>
 
-      <div className="progress-track" aria-hidden="true">
-        <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
-      </div>
+      <progress className="progress-track" value={progress} max={1} aria-hidden="true" />
 
       <section className="timer-meta">
         <div>

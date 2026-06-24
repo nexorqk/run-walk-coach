@@ -90,22 +90,6 @@ export const UpdateWorkoutTemplateSchema = z
     message: "At least one workout timing field is required"
   });
 
-export const CreateRecoveryCodeResponseSchema = z.object({
-  recoveryCode: z.string(),
-  createdAt: z.string()
-});
-
-export const RecoveryCodeStatusSchema = z.object({
-  exists: z.boolean(),
-  createdAt: z.string().nullable(),
-  lastUsedAt: z.string().nullable(),
-  revokedAt: z.string().nullable()
-});
-
-export const RecoverWithCodeSchema = z.object({
-  recoveryCode: z.string().trim().min(8).max(64)
-});
-
 export const AuthProvidersSchema = z.object({
   google: z.object({
     enabled: z.boolean(),
@@ -163,9 +147,6 @@ export type UserProfile = z.infer<typeof UserProfileSchema>;
 export type UpdateUserProfile = z.infer<typeof UpdateUserProfileSchema>;
 export type WorkoutTemplate = z.infer<typeof WorkoutTemplateSchema>;
 export type UpdateWorkoutTemplate = z.infer<typeof UpdateWorkoutTemplateSchema>;
-export type CreateRecoveryCodeResponse = z.infer<typeof CreateRecoveryCodeResponseSchema>;
-export type RecoveryCodeStatus = z.infer<typeof RecoveryCodeStatusSchema>;
-export type RecoverWithCode = z.infer<typeof RecoverWithCodeSchema>;
 export type AuthProviders = z.infer<typeof AuthProvidersSchema>;
 export type CreateWorkoutSession = z.infer<typeof CreateWorkoutSessionSchema>;
 export type WorkoutSession = z.infer<typeof WorkoutSessionSchema>;

@@ -11,9 +11,25 @@ RUN pnpm install --filter @run-walk-coach/api... --frozen-lockfile
 
 COPY packages/shared packages/shared
 COPY apps/api apps/api
-ENV DATABASE_URL="postgresql://runwalk:runwalk@localhost:5432/runwalk?schema=public"
-RUN pnpm --filter @run-walk-coach/shared build
-RUN pnpm --filter @run-walk-coach/api build
+RUN DATABASE_URL="postgresql://runwalk:runwalk@localhost:5432/runwalk?schema=public" pnpm --filter @run-walk-coach/shared build
+RUN DATABASE_URL="postgresql://runwalk:runwalk@localhost:5432/runwalk?schema=public" pnpm --filter @run-walk-coach/api build
+
+FROM node:22-alpine AS runtime
+
+WORKDIR /app
+ENV NODE_ENV=production
+RUN corepack enable
+
+COPY package.json pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml pnpm-lock.yaml
+COPY packages/shared/package.json packages/shared/package.json
+COPY apps/api/package.json apps/api/package.json
+RUN pnpm install --prod --filter @run-walk-coach/api... --frozen-lockfile
+
+COPY apps/api/prisma apps/api/prisma
+COPY --from=build /app/packages/shared/dist packages/shared/dist
+COPY --from=build /app/apps/api/dist apps/api/dist
+RUN DATABASE_URL="postgresql://runwalk:runwalk@localhost:5432/runwalk?schema=public" pnpm --filter @run-walk-coach/api prisma:generate
 
 EXPOSE 4000
 CMD ["pnpm", "--filter", "@run-walk-coach/api", "start"]

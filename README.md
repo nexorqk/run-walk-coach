@@ -53,7 +53,7 @@ DATABASE_URL=postgresql://runwalk:runwalk@localhost:5432/runwalk?schema=public
 - API health: http://localhost:4000/api/health
 - API liveness: http://localhost:4000/api/health/live
 - API readiness: http://localhost:4000/api/health/ready
-- API metrics: http://localhost:4000/api/metrics
+- API metrics, local only: http://localhost:4000/api/metrics
 - API prefix: `/api`
 
 Vite proxies `/api` to `http://localhost:4000` in local development. For same-domain deployment, keep `VITE_API_BASE_URL=/api`.

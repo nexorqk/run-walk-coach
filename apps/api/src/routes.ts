@@ -77,16 +77,23 @@ export async function registerRoutes(app: FastifyInstance) {
     service: "run-walk-coach-api"
   }));
 
-  app.get("/api/metrics", async () => ({
-    uptimeSec: Math.floor(process.uptime()),
-    memory: process.memoryUsage(),
-    nodeEnv: env.nodeEnv
-  }));
+  if (env.nodeEnv !== "production") {
+    app.get("/api/metrics", async () => ({
+      uptimeSec: Math.floor(process.uptime()),
+      memory: process.memoryUsage(),
+      nodeEnv: env.nodeEnv
+    }));
+  }
 
   app.get("/api/profile", async (request, reply) => requireCurrentUser(request, reply));
 
   app.delete("/api/profile", async (request, reply) => {
-    await deleteCurrentUser(request, reply);
+    const deleted = await deleteCurrentUser(request, reply);
+
+    if (!deleted) {
+      return;
+    }
+
     return reply.status(204).send();
   });
 

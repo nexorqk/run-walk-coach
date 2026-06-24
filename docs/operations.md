@@ -42,7 +42,7 @@ The Docker Compose setup models this with a separate `migrate` service that must
 
 - Liveness: `GET /api/health/live`
 - Readiness: `GET /api/health/ready`
-- Runtime metrics: `GET /api/metrics`
+- Runtime metrics: `GET /api/metrics` in non-production environments only.
 
 Use readiness for deploy rollouts because it checks database connectivity.
 
