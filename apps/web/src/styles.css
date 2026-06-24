@@ -173,13 +173,44 @@ h2 {
 .sync-pill {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
   min-height: 32px;
   padding: 0 10px;
+  border: 0;
   border-radius: 8px;
   background: var(--surface-strong);
   color: var(--text);
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.info-badge {
+  cursor: pointer;
+}
+
+.info-badge:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.warning-callout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--amber) 42%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 84%, var(--amber));
+}
+
+.warning-callout svg {
+  color: var(--amber);
+}
+
+.warning-callout p {
+  line-height: 1.42;
+  font-weight: 760;
 }
 
 .primary-action,
@@ -287,7 +318,7 @@ h2 {
   left: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
   min-height: calc(76px + env(safe-area-inset-bottom));
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
@@ -309,19 +340,115 @@ h2 {
   text-decoration: none;
 }
 
+.coach-callout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 86%, var(--accent));
+}
+
+.coach-callout svg {
+  color: var(--accent);
+}
+
+.coach-callout p {
+  line-height: 1.45;
+  font-weight: 750;
+}
+
+.zone-list {
+  display: grid;
+  gap: 10px;
+}
+
+.zone-row {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.zone-row div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.zone-row span,
+.zone-row p {
+  color: var(--muted);
+}
+
+.zone-row span {
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.zone-row p {
+  line-height: 1.42;
+}
+
+.zone-easy {
+  border-left-color: var(--accent);
+}
+
+.zone-steady {
+  border-left-color: var(--focus);
+}
+
+.zone-hard {
+  border-left-color: var(--amber);
+}
+
+.zone-alert {
+  border-left-color: var(--danger);
+}
+
 .nav-item.active {
   background: var(--surface-strong);
   color: var(--accent);
 }
 
 .workout-screen {
+  --phase-color: var(--surface-strong);
+  position: relative;
   min-height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr auto auto;
   gap: 20px;
+  overflow: hidden;
   padding: calc(18px + env(safe-area-inset-top)) 18px calc(20px + env(safe-area-inset-bottom));
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 90%, var(--phase-color));
   color: var(--text);
+  transition: background 260ms ease;
+}
+
+.phase-warmup {
+  --phase-color: var(--surface-strong);
+}
+
+.phase-run {
+  --phase-color: var(--accent);
+}
+
+.phase-walk {
+  --phase-color: var(--amber);
+}
+
+.phase-cooldown {
+  --phase-color: var(--focus);
+}
+
+.phase-done {
+  --phase-color: var(--accent);
 }
 
 .workout-topline {
@@ -347,6 +474,38 @@ h2 {
   gap: 12px;
   min-height: 0;
   text-align: center;
+  animation: timer-stage-enter 420ms ease-out;
+}
+
+.phase-transition {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  pointer-events: none;
+  animation: phase-transition-flash 950ms ease-out both;
+}
+
+.phase-transition span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: min(100%, 420px);
+  min-height: 78px;
+  padding: 0 28px;
+  border: 1px solid color-mix(in srgb, var(--phase-color) 46%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 78%, var(--phase-color));
+  color: var(--text);
+  font-size: 2.4rem;
+  font-weight: 950;
+  letter-spacing: 0;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
 }
 
 .phase-name {
@@ -569,6 +728,11 @@ a:focus-visible {
   color: var(--accent);
 }
 
+.sync-pill.local {
+  background: rgba(113, 199, 255, 0.18);
+  color: var(--focus);
+}
+
 .sync-pill.pending,
 .sync-pill.failed {
   background: rgba(255, 190, 11, 0.18);
@@ -601,6 +765,55 @@ a:focus-visible {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes timer-stage-enter {
+  from {
+    opacity: 0.62;
+    transform: translateY(10px) scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes phase-transition-flash {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  70% {
+    opacity: 0.96;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.02);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workout-screen {
+    transition: none;
+  }
+
+  .timer-stage,
+  .phase-transition {
+    animation: none;
+  }
+
+  .phase-transition {
+    display: none;
   }
 }
 

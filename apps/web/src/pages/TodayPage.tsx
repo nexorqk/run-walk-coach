@@ -1,12 +1,14 @@
-import { Play } from "lucide-react";
+import { AlertTriangle, Info, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { WorkoutSummary } from "../components/WorkoutSummary.js";
 import { useAppStore } from "../store/app-store.js";
+import { primePhaseAudio } from "../utils/phase-feedback.js";
 
 export function TodayPage() {
   const navigate = useNavigate();
   const recommendation = useAppStore((state) => state.recommendation);
   const isLoading = useAppStore((state) => state.isLoading);
+  const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const setActiveWorkoutTemplate = useAppStore((state) => state.setActiveWorkoutTemplate);
   const template = recommendation?.template;
 
@@ -28,6 +30,7 @@ export function TodayPage() {
   }
 
   const startWorkout = () => {
+    primePhaseAudio();
     setActiveWorkoutTemplate(template);
     navigate(`/workout/${template.id}`);
   };
@@ -40,7 +43,20 @@ export function TodayPage() {
         <div className="badge-row">
           <span className="badge">Level {template.level}</span>
           <span className="badge">{recommendation?.action ?? "repeat"}</span>
+          <button className="badge info-badge" type="button" onClick={() => navigate("/settings")}>
+            <Info aria-hidden="true" size={16} />
+            Time can be changed in Settings
+          </button>
         </div>
+        {!serverSyncEnabled ? (
+          <div className="warning-callout">
+            <AlertTriangle aria-hidden="true" size={22} />
+            <p>
+              Progress is saved only in this browser and can be lost if cache,
+              cookies, or site data are cleared.
+            </p>
+          </div>
+        ) : null}
         <p className="muted">{recommendation?.reason}</p>
         <button className="primary-action" type="button" onClick={startWorkout}>
           <Play aria-hidden="true" size={28} fill="currentColor" />

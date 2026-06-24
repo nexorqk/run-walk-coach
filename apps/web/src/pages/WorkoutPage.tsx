@@ -2,16 +2,18 @@ import {
   buildWorkoutTimeline,
   formatTime,
   getWorkoutStateAtElapsedMs,
-  getWorkoutTotalsAtElapsedMs
+  getWorkoutTotalsAtElapsedMs,
+  type WorkoutPhase
 } from "@run-walk-coach/shared";
 import { CheckCircle2, Pause, Play, Square } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { phaseLabel } from "../utils/labels.js";
+import { triggerPhaseChangeFeedback } from "../utils/phase-feedback.js";
 import { useAppStore } from "../store/app-store.js";
 
-function runPhaseFeedback() {
-  navigator.vibrate?.([80, 40, 80]);
+function runControlFeedback() {
+  navigator.vibrate?.(55);
 }
 
 export function WorkoutPage() {
@@ -34,6 +36,7 @@ export function WorkoutPage() {
   const [now, setNow] = useState(() => Date.now());
   const [pausedAt, setPausedAt] = useState<number | null>(null);
   const [pausedDurationMs, setPausedDurationMs] = useState(0);
+  const [transitionPhase, setTransitionPhase] = useState<WorkoutPhase | null>(null);
 
   useEffect(() => {
     if (!template && templateId) {
@@ -58,11 +61,21 @@ export function WorkoutPage() {
   const lastPhaseKey = useRef(phaseKey);
 
   useEffect(() => {
-    if (lastPhaseKey.current !== phaseKey) {
+    if (state && lastPhaseKey.current !== phaseKey) {
       lastPhaseKey.current = phaseKey;
-      runPhaseFeedback();
+      setTransitionPhase(state.phase);
+      triggerPhaseChangeFeedback(state.phase);
     }
-  }, [phaseKey]);
+  }, [phaseKey, state]);
+
+  useEffect(() => {
+    if (!transitionPhase) {
+      return undefined;
+    }
+
+    const timeout = window.setTimeout(() => setTransitionPhase(null), 950);
+    return () => window.clearTimeout(timeout);
+  }, [transitionPhase]);
 
   if (!template || !timeline || !state) {
     return (
@@ -81,12 +94,12 @@ export function WorkoutPage() {
     if (isPaused && pausedAt !== null) {
       setPausedDurationMs((value) => value + Date.now() - pausedAt);
       setPausedAt(null);
-      runPhaseFeedback();
+      runControlFeedback();
       return;
     }
 
     setPausedAt(Date.now());
-    runPhaseFeedback();
+    runControlFeedback();
   };
 
   const finishWorkout = () => {
@@ -111,12 +124,18 @@ export function WorkoutPage() {
 
   return (
     <main className={`workout-screen phase-${state.phase.toLowerCase()}`}>
+      {transitionPhase ? (
+        <div className="phase-transition" key={phaseKey} aria-hidden="true">
+          <span>{phaseLabel(transitionPhase)}</span>
+        </div>
+      ) : null}
+
       <div className="workout-topline">
         <span>{template.name}</span>
         <span>{formatTime(state.elapsedSec)}</span>
       </div>
 
-      <section className="timer-stage" aria-live="polite">
+      <section className="timer-stage" key={phaseKey} aria-live="polite">
         <div className="phase-name">{phaseLabel(state.phase)}</div>
         <div className="timer-value">{formatTime(state.remainingSec)}</div>
         <div className="repeat-line">

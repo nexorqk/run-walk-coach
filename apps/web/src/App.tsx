@@ -1,6 +1,7 @@
 import {
   BarChart3,
   CalendarDays,
+  HeartPulse,
   History,
   Settings,
   TimerReset
@@ -8,6 +9,7 @@ import {
 import { useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AnalyticsPage } from "./pages/AnalyticsPage.js";
+import { CoachPage } from "./pages/CoachPage.js";
 import { HistoryPage } from "./pages/HistoryPage.js";
 import { SessionReportPage } from "./pages/SessionReportPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
@@ -22,6 +24,10 @@ function BottomNav() {
       <NavLink to="/today" className="nav-item">
         <CalendarDays aria-hidden="true" size={23} />
         <span>Today</span>
+      </NavLink>
+      <NavLink to="/coach" className="nav-item">
+        <HeartPulse aria-hidden="true" size={23} />
+        <span>Coach</span>
       </NavLink>
       <NavLink to="/history" className="nav-item">
         <History aria-hidden="true" size={23} />
@@ -49,7 +55,7 @@ export function App() {
     let isMounted = true;
 
     void loadInitialData()
-      .then(() => retryPendingSessions())
+      .then(() => retryPendingSessions(useAppStore.getState().serverSyncEnabled))
       .catch(() => undefined)
       .finally(() => {
         if (isMounted) {
@@ -86,6 +92,7 @@ export function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/today" replace />} />
             <Route path="/today" element={<TodayPage />} />
+            <Route path="/coach" element={<CoachPage />} />
             <Route path="/session-report" element={<SessionReportPage />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/settings" element={<SettingsPage />} />
