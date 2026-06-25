@@ -10,6 +10,7 @@ import {
 import { create } from "zustand";
 import { getNextProgression, getProfile, getWorkoutTemplates } from "../api/client.js";
 import { db, type LocalWorkoutSession } from "../db/local-db.js";
+import { LOCAL_PROFILE_KEY, LOCAL_TEMPLATES_KEY } from "../utils/storage-keys.js";
 
 export type WorkoutDraft = {
   template: WorkoutTemplate;
@@ -36,9 +37,6 @@ type AppState = {
   setActiveWorkoutTemplate: (template: WorkoutTemplate) => void;
   setWorkoutDraft: (draft?: WorkoutDraft) => void;
 };
-
-const LOCAL_PROFILE_KEY = "runWalkCoach.localProfile";
-const LOCAL_TEMPLATES_KEY = "runWalkCoach.localTemplates";
 
 function fallbackTemplate(level = 1): WorkoutTemplate {
   const base = DEFAULT_WORKOUT_TEMPLATES.find((template) => template.level === level) ?? DEFAULT_WORKOUT_TEMPLATES[0];

@@ -274,6 +274,7 @@ h2 {
   color: var(--accent-text);
   font-size: 1.12rem;
   font-weight: 900;
+  text-decoration: none;
 }
 
 .primary-action:disabled {
@@ -292,6 +293,7 @@ h2 {
   background: var(--surface-strong);
   color: var(--text);
   font-weight: 900;
+  text-decoration: none;
 }
 
 .secondary-action:disabled {
@@ -348,6 +350,7 @@ h2 {
   font-size: 1.45rem;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .bottom-nav {
@@ -434,6 +437,44 @@ h2 {
 .coach-callout p {
   line-height: 1.45;
   font-weight: 750;
+}
+
+.coach-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.coach-copy h2 {
+  font-size: 1.12rem;
+}
+
+.onboarding-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.onboarding-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.onboarding-step svg {
+  color: var(--accent);
+}
+
+.onboarding-step div {
+  display: grid;
+  gap: 6px;
+}
+
+.onboarding-step h2 {
+  font-size: 1.06rem;
 }
 
 .coach-callout-amber {
@@ -844,6 +885,12 @@ h2 {
   gap: 12px;
 }
 
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .control-button {
   display: inline-flex;
   align-items: center;
@@ -900,6 +947,17 @@ textarea {
 textarea {
   min-height: 116px;
   resize: vertical;
+}
+
+.file-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  min-height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 input:focus,
@@ -1086,5 +1144,11 @@ a:focus-visible {
   .guide-metric-grid,
   .guide-timeline {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .action-grid {
+    grid-template-columns: 1fr;
   }
 }

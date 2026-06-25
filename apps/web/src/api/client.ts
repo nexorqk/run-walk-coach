@@ -128,3 +128,7 @@ export async function createSession(payload: CreateWorkoutSession): Promise<Work
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
   return AnalyticsSummarySchema.parse(await apiFetch<unknown>("/analytics/summary"));
 }
+
+export async function getServerExportJson(): Promise<unknown> {
+  return apiFetch<unknown>("/export/json");
+}

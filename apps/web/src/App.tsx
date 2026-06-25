@@ -6,11 +6,12 @@ import {
   Settings,
   TimerReset
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { type ReactElement, useEffect, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { AnalyticsPage } from "./pages/AnalyticsPage.js";
 import { CoachPage } from "./pages/CoachPage.js";
 import { HistoryPage } from "./pages/HistoryPage.js";
+import { OnboardingPage } from "./pages/OnboardingPage.js";
 import { SessionReportPage } from "./pages/SessionReportPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { TodayPage } from "./pages/TodayPage.js";
@@ -18,6 +19,7 @@ import { WorkoutPage } from "./pages/WorkoutPage.js";
 import { retryPendingSessions } from "./sync/sync-sessions.js";
 import { useAppStore } from "./store/app-store.js";
 import { useLanguage } from "./utils/language.js";
+import { getOnboardingComplete, setOnboardingComplete } from "./utils/onboarding.js";
 
 function BottomNav() {
   const { t } = useLanguage();
@@ -53,7 +55,9 @@ export function App() {
   const loadInitialData = useAppStore((state) => state.loadInitialData);
   const { t } = useLanguage();
   const isWorkout = location.pathname.startsWith("/workout");
+  const isOnboarding = location.pathname.startsWith("/onboarding");
   const [hasLoadedInitialData, setHasLoadedInitialData] = useState(false);
+  const [onboardingComplete, setOnboardingCompleteState] = useState(() => getOnboardingComplete());
 
   useEffect(() => {
     let isMounted = true;
@@ -72,10 +76,19 @@ export function App() {
     };
   }, [loadInitialData]);
 
+  const completeOnboarding = () => {
+    setOnboardingComplete();
+    setOnboardingCompleteState(true);
+  };
+
+  const guarded = (element: ReactElement) => (
+    onboardingComplete ? element : <Navigate to="/onboarding" replace />
+  );
+
   if (isWorkout) {
     return (
       <Routes>
-        <Route path="/workout/:templateId" element={<WorkoutPage />} />
+        <Route path="/workout/:templateId" element={guarded(<WorkoutPage />)} />
         <Route path="*" element={<Navigate to="/today" replace />} />
       </Routes>
     );
@@ -84,7 +97,7 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <NavLink to="/today" className="brand" aria-label="RunWalk Coach Today">
+        <NavLink to={onboardingComplete ? "/today" : "/onboarding"} className="brand" aria-label="RunWalk Coach Today">
           <img src="/icon.svg" alt="" width="38" height="38" />
           <span>RunWalk Coach</span>
         </NavLink>
@@ -94,13 +107,14 @@ export function App() {
       <main className="page">
         {hasLoadedInitialData ? (
           <Routes>
-            <Route path="/" element={<Navigate to="/today" replace />} />
-            <Route path="/today" element={<TodayPage />} />
-            <Route path="/coach" element={<CoachPage />} />
-            <Route path="/session-report" element={<SessionReportPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/" element={<Navigate to={onboardingComplete ? "/today" : "/onboarding"} replace />} />
+            <Route path="/onboarding" element={<OnboardingPage onComplete={completeOnboarding} />} />
+            <Route path="/today" element={guarded(<TodayPage />)} />
+            <Route path="/coach" element={guarded(<CoachPage />)} />
+            <Route path="/session-report" element={guarded(<SessionReportPage />)} />
+            <Route path="/history" element={guarded(<HistoryPage />)} />
+            <Route path="/settings" element={guarded(<SettingsPage />)} />
+            <Route path="/analytics" element={guarded(<AnalyticsPage />)} />
             <Route path="*" element={<Navigate to="/today" replace />} />
           </Routes>
         ) : (
@@ -111,7 +125,7 @@ export function App() {
         )}
       </main>
 
-      <BottomNav />
+      {!isOnboarding ? <BottomNav /> : null}
     </div>
   );
 }

@@ -1,23 +1,31 @@
 import { buildWorkoutTimeline, formatTime, type AuthProviders } from "@run-walk-coach/shared";
-import { AlertTriangle, Languages, LogIn, Monitor, Moon, Save, Sun, Trash2 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { AlertTriangle, Download, FileJson, Languages, LogIn, Monitor, Moon, Save, Sun, Trash2, Upload } from "lucide-react";
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import {
   deleteProfile,
   getAuthProviders,
+  getServerExportJson,
   googleLoginUrl,
   updateProfile,
   updateWorkoutTemplate
 } from "../api/client.js";
 import { db } from "../db/local-db.js";
+import { retryPendingSessions } from "../sync/sync-sessions.js";
 import { useAppStore } from "../store/app-store.js";
+import {
+  buildBrowserDataExport,
+  countExportedSessions,
+  downloadJsonBackup,
+  withExportPreferences,
+  importBrowserDataExport
+} from "../utils/data-portability.js";
 import { localizeTemplateName, useLanguage } from "../utils/language.js";
+import { LOCAL_PROFILE_KEY, LOCAL_TEMPLATES_KEY } from "../utils/storage-keys.js";
 import { getStoredTheme, setStoredTheme, type AppTheme } from "../utils/theme.js";
-
-const LOCAL_PROFILE_KEY = "runWalkCoach.localProfile";
-const LOCAL_TEMPLATES_KEY = "runWalkCoach.localTemplates";
 
 export function SettingsPage() {
   const profile = useAppStore((state) => state.profile);
+  const templates = useAppStore((state) => state.templates);
   const recommendation = useAppStore((state) => state.recommendation);
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const loadInitialData = useAppStore((state) => state.loadInitialData);
@@ -38,7 +46,10 @@ export function SettingsPage() {
   const [authProviders, setAuthProviders] = useState<AuthProviders>();
   const [theme, setTheme] = useState<AppTheme>(() => getStoredTheme());
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const currentTemplate = recommendation?.template;
   const parsedWarmupSec = Number(warmupSec);
   const parsedRunSec = Number(runSec);
@@ -203,6 +214,87 @@ export function SettingsPage() {
       setStatus(error instanceof Error ? error.message : t({ en: "Could not delete progress", ru: "Не удалось удалить прогресс" }));
     } finally {
       setIsDeletingProfile(false);
+    }
+  };
+
+  const exportData = async () => {
+    setIsExporting(true);
+    setStatus(t({ en: "Preparing JSON export...", ru: "Подготовка JSON экспорта..." }));
+
+    try {
+      const data = withExportPreferences(
+        serverSyncEnabled ? await getServerExportJson() : await buildBrowserDataExport(profile, templates),
+        serverSyncEnabled ? "server" : "browser"
+      );
+      const exportedAt = typeof data.exportedAt === "string" ? data.exportedAt : undefined;
+      const sessionCount = countExportedSessions(data);
+
+      downloadJsonBackup(data, exportedAt);
+      setStatus(
+        t({
+          en: `Exported ${sessionCount} sessions to JSON`,
+          ru: `Экспортировано тренировок в JSON: ${sessionCount}`
+        })
+      );
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t({ en: "Could not export data", ru: "Не удалось экспортировать данные" }));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const importData = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      serverSyncEnabled
+        ? t({
+            en: "Import this JSON backup, replace browser data, and sync imported sessions to this Google account when possible?",
+            ru: "Импортировать этот JSON backup, заменить данные браузера и синхронизировать импортированные тренировки с этим Google аккаунтом при возможности?"
+          })
+        : t({
+            en: "Import this JSON backup and replace all browser progress and settings?",
+            ru: "Импортировать этот JSON backup и заменить весь прогресс и настройки в браузере?"
+          })
+    );
+
+    if (!confirmed) {
+      event.target.value = "";
+      return;
+    }
+
+    setIsImporting(true);
+    setStatus(t({ en: "Importing JSON...", ru: "Импорт JSON..." }));
+
+    try {
+      const result = await importBrowserDataExport(
+        await file.text(),
+        serverSyncEnabled ? "pending" : "local"
+      );
+
+      setWorkoutDraft(undefined);
+      await loadInitialData();
+
+      if (serverSyncEnabled) {
+        await retryPendingSessions(true);
+        await loadInitialData();
+      }
+
+      setStatus(
+        t({
+          en: `Imported ${result.sessionsImported} sessions and ${result.templatesImported} templates`,
+          ru: `Импортировано тренировок: ${result.sessionsImported}, шаблонов: ${result.templatesImported}`
+        })
+      );
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t({ en: "Could not import data", ru: "Не удалось импортировать данные" }));
+    } finally {
+      setIsImporting(false);
+      event.target.value = "";
     }
   };
 
@@ -436,6 +528,62 @@ export function SettingsPage() {
         {totalDurationSec !== undefined ? (
           <p className="muted">{t({ en: "Total time", ru: "Всего времени" })}: {formatTime(totalDurationSec)}</p>
         ) : null}
+      </section>
+
+      <section className="form-section">
+        <div className="section-heading">
+          <h2>{t({ en: "Data backup", ru: "Резервная копия" })}</h2>
+          <p className="muted">
+            {t({
+              en: "Export or restore profile, templates, sessions, language, and theme as JSON.",
+              ru: "Экспортируй или восстанови профиль, шаблоны, тренировки, язык и тему через JSON."
+            })}
+          </p>
+        </div>
+
+        <div className="warning-callout">
+          <FileJson aria-hidden="true" size={22} />
+          <p>
+            {serverSyncEnabled
+              ? t({
+                  en: "Import replaces browser data first. Imported sessions will then sync to the connected Google account when possible.",
+                  ru: "Импорт сначала заменит данные браузера. Затем импортированные тренировки синхронизируются с подключённым Google аккаунтом при возможности."
+                })
+              : t({
+                  en: "This is a manual backup for browser-only progress. Keep the JSON file somewhere safe.",
+                  ru: "Это ручной backup для прогресса только в браузере. Храни JSON файл в безопасном месте."
+                })}
+          </p>
+        </div>
+
+        <div className="action-grid">
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={isExporting}
+            onClick={() => void exportData()}
+          >
+            <Download aria-hidden="true" size={23} />
+            {isExporting ? t({ en: "Exporting...", ru: "Экспорт..." }) : t({ en: "Export JSON", ru: "Экспорт JSON" })}
+          </button>
+          <button
+            className="secondary-action"
+            type="button"
+            disabled={isImporting}
+            onClick={() => importInputRef.current?.click()}
+          >
+            <Upload aria-hidden="true" size={23} />
+            {isImporting ? t({ en: "Importing...", ru: "Импорт..." }) : t({ en: "Import JSON", ru: "Импорт JSON" })}
+          </button>
+        </div>
+
+        <input
+          ref={importInputRef}
+          className="file-input"
+          type="file"
+          accept="application/json,.json"
+          onChange={(event) => void importData(event)}
+        />
       </section>
 
       <section className="form-section">
