@@ -4,6 +4,7 @@ set -eu
 BACKUP_FILE="${1:?backup file is required}"
 OFFSITE_BACKUP_STATE="${OFFSITE_BACKUP_STATE:-/var/lib/run-walk-coach/offsite-backup.last}"
 OFFSITE_BACKUP_REQUIRED="${OFFSITE_BACKUP_REQUIRED:-false}"
+OFFSITE_BACKUP_RCLONE_CONFIG="${OFFSITE_BACKUP_RCLONE_CONFIG:-/etc/run-walk-coach/rclone.conf}"
 
 if [ ! -f "$BACKUP_FILE" ]; then
   printf 'Backup file does not exist: %s\n' "$BACKUP_FILE" >&2
@@ -23,7 +24,7 @@ elif [ "${OFFSITE_BACKUP_TARGET:-}" != "" ]; then
     exit 0
   fi
 
-  rclone copyto "$BACKUP_FILE" "${OFFSITE_BACKUP_TARGET%/}/$(basename "$BACKUP_FILE")"
+  rclone --config "$OFFSITE_BACKUP_RCLONE_CONFIG" copyto "$BACKUP_FILE" "${OFFSITE_BACKUP_TARGET%/}/$(basename "$BACKUP_FILE")"
 else
   if [ "$OFFSITE_BACKUP_REQUIRED" = "true" ]; then
     printf 'Offsite backup is required but OFFSITE_BACKUP_TARGET or OFFSITE_BACKUP_COMMAND is not set\n' >&2

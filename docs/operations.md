@@ -63,10 +63,29 @@ Offsite backups are supported but require external credentials. Configure one of
 these in `/etc/run-walk-coach/ops.env`:
 
 ```env
-OFFSITE_BACKUP_TARGET=rclone-remote:run-walk-coach/postgres
+OFFSITE_BACKUP_TARGET=runwalk-offsite:run-walk-coach/postgres
 OFFSITE_BACKUP_COMMAND=
+OFFSITE_BACKUP_RCLONE_CONFIG=/etc/run-walk-coach/rclone.conf
 OFFSITE_BACKUP_REQUIRED=true
 ```
+
+For S3-compatible storage such as Cloudflare R2, Backblaze B2 S3, or AWS S3,
+create the remote with root-only config:
+
+```bash
+rclone --config /etc/run-walk-coach/rclone.conf config create runwalk-offsite s3 \
+  provider Cloudflare \
+  access_key_id ACCESS_KEY_ID \
+  secret_access_key SECRET_ACCESS_KEY \
+  endpoint https://ACCOUNT_ID.r2.cloudflarestorage.com \
+  acl private
+chmod 600 /etc/run-walk-coach/rclone.conf
+rclone --config /etc/run-walk-coach/rclone.conf lsd runwalk-offsite:
+```
+
+Then set `OFFSITE_BACKUP_TARGET` to `runwalk-offsite:BUCKET_NAME/postgres`,
+run `systemctl start run-walk-coach-backup.service`, and verify
+`/var/lib/run-walk-coach/offsite-backup.last`.
 
 or:
 
