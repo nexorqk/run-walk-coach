@@ -6,4 +6,6 @@ dist
 coverage
 backups
 *.log
+playwright-report
+test-results
 apps/api/prisma/migrations/dev.db

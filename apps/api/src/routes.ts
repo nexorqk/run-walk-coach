@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import {
   CreateWorkoutSessionSchema,
   UpdateUserProfileSchema,
+  UpdateWorkoutSessionSchema,
   UpdateWorkoutTemplateSchema
 } from "@run-walk-coach/shared";
 import { z } from "zod";
@@ -384,6 +385,38 @@ export async function registerRoutes(app: FastifyInstance) {
     }
 
     return session;
+  });
+
+  app.patch<{ Params: { id: string } }>("/api/sessions/:id", async (request, reply) => {
+    const parsed = UpdateWorkoutSessionSchema.safeParse(request.body);
+
+    if (!parsed.success) {
+      return validationError(reply, parsed.error.issues);
+    }
+
+    const user = await requireCurrentUser(request, reply);
+    if (!user) return;
+    const session = await prisma.workoutSession.findFirst({
+      where: {
+        id: request.params.id,
+        userId: user.id
+      }
+    });
+
+    if (!session) {
+      return reply.status(404).send({ error: "WorkoutSessionNotFound" });
+    }
+
+    const { date, ...data } = parsed.data;
+
+    return prisma.workoutSession.update({
+      where: { id: request.params.id },
+      data: {
+        ...data,
+        date: date ? new Date(date) : undefined
+      },
+      include: { template: true }
+    });
   });
 
   app.delete<{ Params: { id: string } }>("/api/sessions/:id", async (request, reply) => {

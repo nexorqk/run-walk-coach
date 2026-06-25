@@ -6,6 +6,7 @@ import {
   type AuthProviders,
   type CreateWorkoutSession,
   type ProgressionResponse,
+  type UpdateWorkoutSession,
   type UpdateUserProfile,
   type UpdateWorkoutTemplate,
   type UserProfile,
@@ -123,6 +124,21 @@ export async function createSession(payload: CreateWorkoutSession): Promise<Work
       body: JSON.stringify(payload)
     })
   );
+}
+
+export async function updateSession(id: string, payload: UpdateWorkoutSession): Promise<WorkoutSession> {
+  return WorkoutSessionSchema.parse(
+    await apiFetch<unknown>(`/sessions/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload)
+    })
+  );
+}
+
+export async function deleteSession(id: string): Promise<void> {
+  await apiFetch<void>(`/sessions/${id}`, {
+    method: "DELETE"
+  });
 }
 
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {

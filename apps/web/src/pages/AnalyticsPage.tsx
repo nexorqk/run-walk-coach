@@ -1,11 +1,27 @@
-import { formatTime, type AnalyticsSummary } from "@run-walk-coach/shared";
-import { AlertTriangle, RefreshCcw } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getAnalyticsSummary } from "../api/client.js";
+import { formatTime, type AnalyticsSummary, type WorkoutSession } from "@run-walk-coach/shared";
+import { Activity, AlertTriangle, HeartPulse, Percent, RefreshCcw, TrendingUp } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getAnalyticsSummary, getSessions } from "../api/client.js";
 import { WorkoutSummary } from "../components/WorkoutSummary.js";
-import { db } from "../db/local-db.js";
+import { db, type LocalWorkoutSession } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
-import { localizeProgressionReason, localizeTemplateName, useLanguage } from "../utils/language.js";
+import {
+  formatDateTime,
+  localizeProgressionReason,
+  localizeTemplateName,
+  useLanguage
+} from "../utils/language.js";
+
+type TrendSession = {
+  key: string;
+  date: string;
+  totalDurationSec: number;
+  totalRunSec: number;
+  difficulty: number;
+  avgHr?: number | null;
+  maxHr?: number | null;
+  templateLevel?: number;
+};
 
 function startOfWeek(date: Date) {
   const start = new Date(date);
@@ -15,47 +31,110 @@ function startOfWeek(date: Date) {
   return start;
 }
 
+function localToTrend(session: LocalWorkoutSession): TrendSession {
+  return {
+    key: session.localId,
+    date: session.date,
+    totalDurationSec: session.totalDurationSec,
+    totalRunSec: session.totalRunSec,
+    difficulty: session.difficulty,
+    avgHr: session.avgHr,
+    maxHr: session.maxHr,
+    templateLevel: session.templateLevel
+  };
+}
+
+function remoteToTrend(session: WorkoutSession): TrendSession {
+  return {
+    key: session.id,
+    date: session.date,
+    totalDurationSec: session.totalDurationSec,
+    totalRunSec: session.totalRunSec,
+    difficulty: session.difficulty,
+    avgHr: session.avgHr,
+    maxHr: session.maxHr,
+    templateLevel: session.template?.level
+  };
+}
+
+function average(values: number[]) {
+  return values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function formatDelta(value: number | null, suffix = "") {
+  if (value === null) {
+    return "-";
+  }
+
+  if (Math.abs(value) < 0.05) {
+    return `0${suffix}`;
+  }
+
+  return `${value > 0 ? "+" : ""}${value.toFixed(1)}${suffix}`;
+}
+
+function formatTimeDelta(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  if (value === 0) {
+    return "0:00";
+  }
+
+  return `${value > 0 ? "+" : "-"}${formatTime(Math.abs(value))}`;
+}
+
+function buildLocalSummary(
+  sessions: TrendSession[],
+  recommendation: AnalyticsSummary["next"] | undefined
+): AnalyticsSummary | null {
+  if (!recommendation) {
+    return null;
+  }
+
+  const weekStart = startOfWeek(new Date());
+  const weekSessions = sessions.filter((session) => new Date(session.date) >= weekStart);
+  const latest = sessions[0];
+
+  return {
+    sessionsThisWeek: weekSessions.length,
+    totalDurationThisWeekSec: weekSessions.reduce((sum, session) => sum + session.totalDurationSec, 0),
+    totalRunThisWeekSec: weekSessions.reduce((sum, session) => sum + session.totalRunSec, 0),
+    averageDifficulty: average(weekSessions.map((session) => session.difficulty)),
+    currentLevel: latest?.templateLevel ?? recommendation.template.level,
+    next: recommendation
+  };
+}
+
 export function AnalyticsPage() {
+  const profile = useAppStore((state) => state.profile);
   const recommendation = useAppStore((state) => state.recommendation);
   const refreshRecommendation = useAppStore((state) => state.refreshRecommendation);
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const { language, t } = useLanguage();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [sessions, setSessions] = useState<TrendSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadLocal = async () => {
-      const weekStart = startOfWeek(new Date());
-      const localSessions = await db.sessions.toArray();
-      const weekSessions = localSessions.filter((session) => new Date(session.date) >= weekStart);
-      const averageDifficulty =
-        weekSessions.length === 0
-          ? null
-          : weekSessions.reduce((sum, session) => sum + session.difficulty, 0) / weekSessions.length;
-      const latest = [...localSessions].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      )[0];
+  const loadLocal = useCallback(async () => {
+    const localSessions = (await db.sessions.orderBy("date").reverse().toArray()).map(localToTrend);
+    setSessions(localSessions);
+    setSummary(buildLocalSummary(localSessions, useAppStore.getState().recommendation));
+  }, []);
 
-      if (recommendation) {
-        setSummary({
-          sessionsThisWeek: weekSessions.length,
-          totalDurationThisWeekSec: weekSessions.reduce(
-            (sum, session) => sum + session.totalDurationSec,
-            0
-          ),
-          totalRunThisWeekSec: weekSessions.reduce((sum, session) => sum + session.totalRunSec, 0),
-          averageDifficulty,
-          currentLevel: latest?.templateLevel ?? recommendation.template.level,
-          next: recommendation
-        });
-      }
-  };
-
-  const load = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
 
     try {
       if (serverSyncEnabled) {
-        setSummary(await getAnalyticsSummary());
+        const [remoteSummary, remoteSessions] = await Promise.all([
+          getAnalyticsSummary(),
+          getSessions()
+        ]);
+
+        setSummary(remoteSummary);
+        setSessions(remoteSessions.map(remoteToTrend));
       } else {
         await loadLocal();
       }
@@ -64,11 +143,72 @@ export function AnalyticsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loadLocal, serverSyncEnabled]);
 
   useEffect(() => {
-    void refreshRecommendation().finally(load);
-  }, [serverSyncEnabled, language]);
+    let ignore = false;
+
+    void refreshRecommendation()
+      .then(() => {
+        if (!ignore) {
+          return load();
+        }
+
+        return undefined;
+      })
+      .catch(() => {
+        if (!ignore) {
+          return load();
+        }
+
+        return undefined;
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [language, load, refreshRecommendation]);
+
+  const trends = useMemo(() => {
+    const sorted = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const latestSix = sorted.slice(0, 6);
+    const previousSix = sorted.slice(6, 12);
+    const lastThree = sorted.slice(0, 3);
+    const previousThree = sorted.slice(3, 6);
+    const weekStart = startOfWeek(new Date());
+    const previousWeekStart = new Date(weekStart);
+    previousWeekStart.setDate(previousWeekStart.getDate() - 7);
+    const weekSessions = sorted.filter((session) => new Date(session.date) >= weekStart);
+    const previousWeekSessions = sorted.filter((session) => {
+      const date = new Date(session.date);
+      return date >= previousWeekStart && date < weekStart;
+    });
+    const runRatio =
+      weekSessions.length === 0
+        ? null
+        : weekSessions.reduce((sum, session) => sum + session.totalRunSec, 0) /
+          Math.max(1, weekSessions.reduce((sum, session) => sum + session.totalDurationSec, 0));
+    const weekRunSec = weekSessions.reduce((sum, session) => sum + session.totalRunSec, 0);
+    const previousWeekRunSec = previousWeekSessions.reduce((sum, session) => sum + session.totalRunSec, 0);
+    const avgLastThreeDifficulty = average(lastThree.map((session) => session.difficulty));
+    const avgPreviousThreeDifficulty = average(previousThree.map((session) => session.difficulty));
+    const avgDifficultyDelta =
+      avgLastThreeDifficulty !== null && avgPreviousThreeDifficulty !== null
+        ? avgLastThreeDifficulty - avgPreviousThreeDifficulty
+        : null;
+    const avgMaxHr = average(latestSix.map((session) => session.maxHr).filter((value): value is number => value !== null && value !== undefined));
+    const previousAvgMaxHr = average(previousSix.map((session) => session.maxHr).filter((value): value is number => value !== null && value !== undefined));
+
+    return {
+      recent: latestSix,
+      runRatio,
+      weekRunSec,
+      weekRunDeltaSec: previousWeekSessions.length === 0 ? null : weekRunSec - previousWeekRunSec,
+      avgDifficultyDelta,
+      avgMaxHr,
+      avgMaxHrDelta: avgMaxHr !== null && previousAvgMaxHr !== null ? avgMaxHr - previousAvgMaxHr : null
+    };
+  }, [sessions]);
 
   return (
     <div className="stack">
@@ -125,6 +265,57 @@ export function AnalyticsPage() {
               <strong>{summary.currentLevel}</strong>
             </div>
           </section>
+
+          <section className="trend-grid">
+            <div className="trend-card">
+              <TrendingUp aria-hidden="true" size={22} />
+              <span>{t({ en: "Run volume", ru: "Объём бега" })}</span>
+              <strong>{formatTime(trends.weekRunSec)}</strong>
+              <p>{t({ en: "vs previous week", ru: "к прошлой неделе" })}: {formatTimeDelta(trends.weekRunDeltaSec)}</p>
+            </div>
+            <div className="trend-card">
+              <Percent aria-hidden="true" size={22} />
+              <span>{t({ en: "Run ratio", ru: "Доля бега" })}</span>
+              <strong>{trends.runRatio === null ? "-" : `${Math.round(trends.runRatio * 100)}%`}</strong>
+              <p>{t({ en: "of total workout time", ru: "от общего времени" })}</p>
+            </div>
+            <div className="trend-card">
+              <Activity aria-hidden="true" size={22} />
+              <span>{t({ en: "Difficulty trend", ru: "Тренд сложности" })}</span>
+              <strong>{formatDelta(trends.avgDifficultyDelta)}</strong>
+              <p>{t({ en: "last 3 vs previous 3", ru: "последние 3 к предыдущим 3" })}</p>
+            </div>
+            <div className="trend-card">
+              <HeartPulse aria-hidden="true" size={22} />
+              <span>{t({ en: "Avg max HR", ru: "Средний max пульс" })}</span>
+              <strong>{trends.avgMaxHr === null ? "-" : Math.round(trends.avgMaxHr)}</strong>
+              <p>
+                {profile?.easyHrMax ? `${t({ en: "easy max", ru: "лёгкий max" })}: ${profile.easyHrMax}` : formatDelta(trends.avgMaxHrDelta, " bpm")}
+              </p>
+            </div>
+          </section>
+
+          {trends.recent.length > 0 ? (
+            <section className="panel">
+              <div className="section-heading">
+                <div>
+                  <div className="eyebrow">{t({ en: "Trend", ru: "Тренд" })}</div>
+                  <h2>{t({ en: "Recent sessions", ru: "Последние тренировки" })}</h2>
+                </div>
+              </div>
+              <div className="trend-list">
+                {trends.recent.map((session) => (
+                  <div className="trend-row" key={session.key}>
+                    <span>{formatDateTime(session.date, language)}</span>
+                    <strong>{session.templateLevel ? `L${session.templateLevel}` : "-"}</strong>
+                    <span>{t({ en: "Run", ru: "Бег" })} {formatTime(session.totalRunSec)}</span>
+                    <span>D{session.difficulty}</span>
+                    <span>Max {session.maxHr ?? "-"}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="panel">
             <div className="eyebrow">{t({ en: "Next", ru: "Дальше" })}</div>

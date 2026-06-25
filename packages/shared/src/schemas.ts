@@ -113,6 +113,19 @@ export const CreateWorkoutSessionSchema = z.object({
   notes: z.string().max(2000).nullable().optional()
 });
 
+export const UpdateWorkoutSessionSchema = CreateWorkoutSessionSchema.pick({
+  date: true,
+  completed: true,
+  avgHr: true,
+  maxHr: true,
+  difficulty: true,
+  breathing: true,
+  pain: true,
+  notes: true
+}).partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one session field is required"
+});
+
 export const WorkoutSessionSchema = CreateWorkoutSessionSchema.extend({
   id: z.string(),
   userId: z.string(),
@@ -149,6 +162,7 @@ export type WorkoutTemplate = z.infer<typeof WorkoutTemplateSchema>;
 export type UpdateWorkoutTemplate = z.infer<typeof UpdateWorkoutTemplateSchema>;
 export type AuthProviders = z.infer<typeof AuthProvidersSchema>;
 export type CreateWorkoutSession = z.infer<typeof CreateWorkoutSessionSchema>;
+export type UpdateWorkoutSession = z.infer<typeof UpdateWorkoutSessionSchema>;
 export type WorkoutSession = z.infer<typeof WorkoutSessionSchema>;
 export type ProgressionResponse = z.infer<typeof ProgressionResponseSchema>;
 export type AnalyticsSummary = z.infer<typeof AnalyticsSummarySchema>;
