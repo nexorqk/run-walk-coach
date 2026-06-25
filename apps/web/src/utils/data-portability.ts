@@ -10,7 +10,12 @@ import {
   normalizeImportedSession,
   type ImportedSyncStatus
 } from "./session-import.js";
-import { LOCAL_PROFILE_KEY, LOCAL_TEMPLATES_KEY } from "./storage-keys.js";
+import {
+  LOCAL_PROFILE_KEY,
+  LOCAL_TEMPLATES_KEY,
+  WEEKLY_PLAN_COMPLETION_KEY,
+  WEEKLY_RUN_TARGET_KEY
+} from "./storage-keys.js";
 import { getStoredTheme, setStoredTheme } from "./theme.js";
 
 type ImportedData = z.infer<typeof BrowserDataImportSchema>;
@@ -25,6 +30,8 @@ export type BrowserDataExport = {
   preferences: {
     language: ReturnType<typeof getStoredLanguage>;
     theme: ReturnType<typeof getStoredTheme>;
+    weeklyPlanCompletion?: Record<string, boolean>;
+    weeklyRunTarget?: 2 | 3;
   };
 };
 
@@ -42,6 +49,15 @@ function readStoredJson<T>(key: string): T | undefined {
   try {
     const raw = localStorage.getItem(key);
     return raw ? (JSON.parse(raw) as T) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getStoredWeeklyRunTarget() {
+  try {
+    const value = localStorage.getItem(WEEKLY_RUN_TARGET_KEY);
+    return value === "2" || value === "3" ? (Number(value) as 2 | 3) : undefined;
   } catch {
     return undefined;
   }
@@ -76,7 +92,9 @@ export async function buildBrowserDataExport(
     sessions,
     preferences: {
       language: getStoredLanguage(),
-      theme: getStoredTheme()
+      theme: getStoredTheme(),
+      weeklyPlanCompletion: readStoredJson<Record<string, boolean>>(WEEKLY_PLAN_COMPLETION_KEY),
+      weeklyRunTarget: getStoredWeeklyRunTarget()
     }
   };
 }
@@ -95,7 +113,9 @@ export function withExportPreferences(data: unknown, source: "browser" | "server
     preferences: {
       ...existingPreferences,
       language: getStoredLanguage(),
-      theme: getStoredTheme()
+      theme: getStoredTheme(),
+      weeklyPlanCompletion: readStoredJson<Record<string, boolean>>(WEEKLY_PLAN_COMPLETION_KEY),
+      weeklyRunTarget: getStoredWeeklyRunTarget()
     }
   };
 }
@@ -155,6 +175,18 @@ export async function importBrowserDataExport(
 
   if (parsed.preferences?.theme) {
     setStoredTheme(parsed.preferences.theme);
+  }
+
+  if (parsed.preferences?.weeklyPlanCompletion) {
+    localStorage.setItem(WEEKLY_PLAN_COMPLETION_KEY, JSON.stringify(parsed.preferences.weeklyPlanCompletion));
+  } else {
+    localStorage.removeItem(WEEKLY_PLAN_COMPLETION_KEY);
+  }
+
+  if (parsed.preferences?.weeklyRunTarget) {
+    localStorage.setItem(WEEKLY_RUN_TARGET_KEY, String(parsed.preferences.weeklyRunTarget));
+  } else {
+    localStorage.removeItem(WEEKLY_RUN_TARGET_KEY);
   }
 
   return {

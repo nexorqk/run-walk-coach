@@ -5,6 +5,9 @@ test("local user can complete the core browser flow", async ({ page }) => {
 
   await page.getByRole("button", { name: "Start locally" }).click();
   await expect(page.getByRole("heading", { name: /Level 1/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Build the week, not just today" })).toBeVisible();
+  await page.getByRole("button", { name: "3 runs" }).click();
+  await expect(page.getByText("Runs: 0/3")).toBeVisible();
 
   await page.getByRole("button", { name: "Start workout" }).click();
   await expect(page.getByText("WARMUP")).toBeVisible();

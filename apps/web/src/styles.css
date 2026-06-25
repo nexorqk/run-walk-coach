@@ -1168,6 +1168,119 @@ a:focus-visible {
   color: var(--text);
 }
 
+.weekly-plan {
+  display: grid;
+  gap: 14px;
+}
+
+.weekly-plan-toolbar {
+  display: grid;
+  gap: 10px;
+}
+
+.weekly-plan-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.weekly-plan-stats span,
+.weekly-day-meta {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.weekly-warning-list {
+  display: grid;
+  gap: 8px;
+}
+
+.weekly-warning.danger {
+  border-color: color-mix(in srgb, var(--danger) 42%, var(--line));
+  background: color-mix(in srgb, var(--surface) 86%, var(--danger));
+}
+
+.weekly-warning.danger svg {
+  color: var(--danger);
+}
+
+.weekly-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.weekly-day {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  min-height: 178px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.weekly-day.today {
+  border-color: color-mix(in srgb, var(--focus) 46%, var(--line));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 28%, transparent);
+}
+
+.weekly-day.done {
+  background: color-mix(in srgb, var(--surface) 88%, var(--accent));
+}
+
+.weekly-day-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.weekly-day-top svg:first-child {
+  color: var(--accent);
+}
+
+.weekly-day.done .weekly-day-top svg:last-child {
+  color: var(--accent);
+}
+
+.weekly-day h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.18;
+}
+
+.weekly-day p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.34;
+}
+
+.compact-action {
+  min-height: 42px;
+  padding: 0 10px;
+  font-size: 0.9rem;
+}
+
+.inline-icon {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: -3px;
+}
+
 .empty-state {
   display: grid;
   place-items: center;
@@ -1268,6 +1381,17 @@ a:focus-visible {
   .guide-timeline {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
+  .weekly-plan-toolbar {
+    grid-template-columns: minmax(260px, 0.8fr) 1fr;
+    align-items: center;
+  }
+}
+
+@media (max-width: 719px) {
+  .weekly-plan-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 520px) {
@@ -1290,5 +1414,9 @@ a:focus-visible {
 
   .trend-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .weekly-plan-grid {
+    grid-template-columns: 1fr;
   }
 }

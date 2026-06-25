@@ -45,7 +45,9 @@ export const BrowserDataImportSchema = z.object({
   preferences: z
     .object({
       language: AppLanguageSchema.optional(),
-      theme: AppThemeSchema.optional()
+      theme: AppThemeSchema.optional(),
+      weeklyPlanCompletion: z.record(z.boolean()).optional(),
+      weeklyRunTarget: z.union([z.literal(2), z.literal(3)]).optional()
     })
     .optional()
 });
