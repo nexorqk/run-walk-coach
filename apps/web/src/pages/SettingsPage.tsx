@@ -546,8 +546,8 @@ export function SettingsPage() {
           <p>
             {serverSyncEnabled
               ? t({
-                  en: "Import replaces browser data first. Imported sessions will then sync to the connected Google account when possible.",
-                  ru: "Импорт сначала заменит данные браузера. Затем импортированные тренировки синхронизируются с подключённым Google аккаунтом при возможности."
+                  en: "Import replaces browser data first. Browser-only imported sessions will then sync to the connected Google account when possible.",
+                  ru: "Импорт сначала заменит данные браузера. Локальные импортированные тренировки затем синхронизируются с подключённым Google аккаунтом при возможности."
                 })
               : t({
                   en: "This is a manual backup for browser-only progress. Keep the JSON file somewhere safe.",
