@@ -771,7 +771,7 @@ h2 {
 .readiness-grid input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 9999px;
-  background: var(--surface-strong);
+  background: var(--line);
 }
 
 .readiness-grid input[type="range"]::-webkit-slider-thumb {
@@ -792,7 +792,7 @@ h2 {
 .readiness-grid input[type="range"]::-moz-range-track {
   height: 6px;
   border-radius: 9999px;
-  background: var(--surface-strong);
+  background: var(--line);
   border: 0;
 }
 
