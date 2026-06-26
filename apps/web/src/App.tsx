@@ -20,6 +20,7 @@ import { SettingsPage } from "./pages/SettingsPage.js";
 import { TodayPage } from "./pages/TodayPage.js";
 import { WorkoutPage } from "./pages/WorkoutPage.js";
 import { retryPendingSessions } from "./sync/sync-sessions.js";
+import { Toaster } from "./components/Toaster.js";
 import { useAppStore } from "./store/app-store.js";
 import { useLanguage } from "./utils/language.js";
 import { getOnboardingComplete, setOnboardingComplete } from "./utils/onboarding.js";
@@ -223,6 +224,7 @@ export function App() {
 
       {!isOnboarding && !isLanding ? <BottomNav /> : null}
       {!isWorkout ? <ScrollToTopButton /> : null}
+      <Toaster />
     </div>
   );
 }

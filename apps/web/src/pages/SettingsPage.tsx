@@ -10,6 +10,7 @@ import {
   updateProfile,
   updateWorkoutTemplate
 } from "../api/client.js";
+import { showToast } from "../components/Toaster.js";
 import { retryPendingSessions } from "../sync/sync-sessions.js";
 import { useAppStore } from "../store/app-store.js";
 import {
@@ -159,8 +160,14 @@ export function SettingsPage() {
       }
 
       setStatus(serverSyncEnabled ? t({ en: "Saved to server", ru: "Сохранено на сервер" }) : t({ en: "Saved in this browser", ru: "Сохранено в этом браузере" }));
+      showToast(
+        serverSyncEnabled ? t({ en: "Saved to server", ru: "Сохранено на сервер" }) : t({ en: "Saved in this browser", ru: "Сохранено в этом браузере" }),
+        "success"
+      );
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t({ en: "Could not save settings", ru: "Не удалось сохранить настройки" }));
+      const message = error instanceof Error ? error.message : t({ en: "Could not save settings", ru: "Не удалось сохранить настройки" });
+      setStatus(message);
+      showToast(message, "error");
     } finally {
       setIsSaving(false);
     }
@@ -208,8 +215,11 @@ export function SettingsPage() {
       setWorkoutDraft(undefined);
       await loadInitialData();
       setStatus(t({ en: "Progress deleted", ru: "Прогресс удалён" }));
+      showToast(t({ en: "Progress deleted", ru: "Прогресс удалён" }), "success");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t({ en: "Could not delete progress", ru: "Не удалось удалить прогресс" }));
+      const message = error instanceof Error ? error.message : t({ en: "Could not delete progress", ru: "Не удалось удалить прогресс" });
+      setStatus(message);
+      showToast(message, "error");
     } finally {
       setIsDeletingProfile(false);
     }
@@ -228,14 +238,16 @@ export function SettingsPage() {
       const sessionCount = countExportedSessions(data);
 
       downloadJsonBackup(data, exportedAt);
-      setStatus(
-        t({
-          en: `Exported ${sessionCount} sessions to JSON`,
-          ru: `Экспортировано тренировок в JSON: ${sessionCount}`
-        })
-      );
+      const exportMsg = t({
+        en: `Exported ${sessionCount} sessions to JSON`,
+        ru: `Экспортировано тренировок в JSON: ${sessionCount}`
+      });
+      setStatus(exportMsg);
+      showToast(exportMsg, "success");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t({ en: "Could not export data", ru: "Не удалось экспортировать данные" }));
+      const message = error instanceof Error ? error.message : t({ en: "Could not export data", ru: "Не удалось экспортировать данные" });
+      setStatus(message);
+      showToast(message, "error");
     } finally {
       setIsExporting(false);
     }
@@ -282,14 +294,16 @@ export function SettingsPage() {
         await loadInitialData();
       }
 
-      setStatus(
-        t({
-          en: `Imported ${result.sessionsImported} sessions and ${result.templatesImported} templates`,
-          ru: `Импортировано тренировок: ${result.sessionsImported}, шаблонов: ${result.templatesImported}`
-        })
-      );
+      const importMsg = t({
+        en: `Imported ${result.sessionsImported} sessions and ${result.templatesImported} templates`,
+        ru: `Импортировано тренировок: ${result.sessionsImported}, шаблонов: ${result.templatesImported}`
+      });
+      setStatus(importMsg);
+      showToast(importMsg, "success");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : t({ en: "Could not import data", ru: "Не удалось импортировать данные" }));
+      const message = error instanceof Error ? error.message : t({ en: "Could not import data", ru: "Не удалось импортировать данные" });
+      setStatus(message);
+      showToast(message, "error");
     } finally {
       setIsImporting(false);
       event.target.value = "";
