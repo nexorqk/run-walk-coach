@@ -161,7 +161,7 @@ export function WorkoutPage() {
 
       <div className="workout-controls">
         <button
-          className="control-button"
+          className={`control-button${isPaused ? " resume" : ""}`}
           type="button"
           onClick={togglePause}
           title={isPaused ? t({ en: "Resume", ru: "Продолжить" }) : t({ en: "Pause", ru: "Пауза" })}
