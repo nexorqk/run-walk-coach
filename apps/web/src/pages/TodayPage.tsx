@@ -75,6 +75,8 @@ export function TodayPage() {
         </button>
       </section>
 
+      <WorkoutSummary template={template} />
+
       <ReadinessCheck onStartWorkout={startWorkout} />
 
       <WeeklyPlan
@@ -82,8 +84,6 @@ export function TodayPage() {
         serverSyncEnabled={serverSyncEnabled}
         onStartWorkout={startWorkout}
       />
-
-      <WorkoutSummary template={template} />
     </div>
   );
 }
