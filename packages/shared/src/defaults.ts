@@ -19,6 +19,38 @@ export type DefaultWorkoutTemplate = {
   isDefault: true;
 };
 
+export type DefaultExercise = {
+  slug: string;
+  name: string;
+  category: string;
+  movementPattern: string;
+  equipment: string;
+  difficulty: number;
+};
+
+export type DefaultStrengthWorkoutExercise = {
+  exerciseSlug: string;
+  sets: number;
+  repsMin: number;
+  repsMax: number;
+  restSeconds: number;
+  sortOrder: number;
+};
+
+export type DefaultStrengthWorkoutTemplate = {
+  code: string;
+  name: string;
+  isDefault: true;
+  exercises: DefaultStrengthWorkoutExercise[];
+};
+
+export type DefaultExerciseAlternative = {
+  exerciseSlug: string;
+  alternativeExerciseSlug: string;
+  reason: string;
+  difficultyDelta: number;
+};
+
 const warmupSec = 600;
 const cooldownSec = 300;
 
@@ -132,5 +164,147 @@ export const DEFAULT_WORKOUT_TEMPLATES: DefaultWorkoutTemplate[] = [
     repeats: 1,
     cooldownSec,
     isDefault: true
+  }
+];
+
+export const DEFAULT_STRENGTH_EXERCISES: DefaultExercise[] = [
+  {
+    slug: "pull_up",
+    name: "Pull-up",
+    category: "strength",
+    movementPattern: "vertical_pull",
+    equipment: "pull_up_bar",
+    difficulty: 4
+  },
+  {
+    slug: "reverse_grip_pull_up",
+    name: "Reverse-grip pull-up",
+    category: "strength",
+    movementPattern: "vertical_pull",
+    equipment: "pull_up_bar",
+    difficulty: 4
+  },
+  {
+    slug: "push_up",
+    name: "Push-up",
+    category: "strength",
+    movementPattern: "horizontal_push",
+    equipment: "bodyweight",
+    difficulty: 2
+  },
+  {
+    slug: "deep_squat",
+    name: "Deep squat",
+    category: "strength",
+    movementPattern: "squat",
+    equipment: "bodyweight",
+    difficulty: 2
+  },
+  {
+    slug: "dead_bug",
+    name: "Dead bug",
+    category: "core",
+    movementPattern: "anti_extension",
+    equipment: "bodyweight",
+    difficulty: 1
+  },
+  {
+    slug: "plank",
+    name: "Plank",
+    category: "core",
+    movementPattern: "anti_extension",
+    equipment: "bodyweight",
+    difficulty: 2
+  },
+  {
+    slug: "bird_dog",
+    name: "Bird dog",
+    category: "core",
+    movementPattern: "anti_rotation",
+    equipment: "bodyweight",
+    difficulty: 1
+  },
+  {
+    slug: "kettlebell_deadlift",
+    name: "Kettlebell deadlift",
+    category: "strength",
+    movementPattern: "hinge",
+    equipment: "kettlebell",
+    difficulty: 2
+  },
+  {
+    slug: "kettlebell_row",
+    name: "Kettlebell row",
+    category: "strength",
+    movementPattern: "horizontal_pull",
+    equipment: "kettlebell",
+    difficulty: 2
+  },
+  {
+    slug: "romanian_deadlift",
+    name: "Romanian deadlift",
+    category: "strength",
+    movementPattern: "hinge",
+    equipment: "kettlebell",
+    difficulty: 3
+  },
+  {
+    slug: "goblet_squat",
+    name: "Goblet squat",
+    category: "strength",
+    movementPattern: "squat",
+    equipment: "kettlebell",
+    difficulty: 3
+  }
+];
+
+export const DEFAULT_STRENGTH_WORKOUT_TEMPLATES: DefaultStrengthWorkoutTemplate[] = [
+  {
+    code: "strength_a",
+    name: "Strength A",
+    isDefault: true,
+    exercises: [
+      { exerciseSlug: "pull_up", sets: 3, repsMin: 3, repsMax: 6, restSeconds: 150, sortOrder: 1 },
+      { exerciseSlug: "push_up", sets: 3, repsMin: 8, repsMax: 15, restSeconds: 90, sortOrder: 2 },
+      { exerciseSlug: "deep_squat", sets: 3, repsMin: 15, repsMax: 20, restSeconds: 90, sortOrder: 3 },
+      { exerciseSlug: "dead_bug", sets: 3, repsMin: 8, repsMax: 12, restSeconds: 60, sortOrder: 4 }
+    ]
+  },
+  {
+    code: "strength_b",
+    name: "Strength B",
+    isDefault: true,
+    exercises: [
+      { exerciseSlug: "reverse_grip_pull_up", sets: 2, repsMin: 2, repsMax: 4, restSeconds: 150, sortOrder: 1 },
+      { exerciseSlug: "push_up", sets: 3, repsMin: 8, repsMax: 15, restSeconds: 90, sortOrder: 2 },
+      { exerciseSlug: "deep_squat", sets: 3, repsMin: 15, repsMax: 20, restSeconds: 90, sortOrder: 3 },
+      { exerciseSlug: "dead_bug", sets: 3, repsMin: 8, repsMax: 12, restSeconds: 60, sortOrder: 4 }
+    ]
+  },
+  {
+    code: "kettlebell_b",
+    name: "Kettlebell B",
+    isDefault: true,
+    exercises: [
+      { exerciseSlug: "kettlebell_deadlift", sets: 3, repsMin: 8, repsMax: 12, restSeconds: 120, sortOrder: 1 },
+      { exerciseSlug: "kettlebell_row", sets: 3, repsMin: 8, repsMax: 12, restSeconds: 90, sortOrder: 2 },
+      { exerciseSlug: "romanian_deadlift", sets: 3, repsMin: 8, repsMax: 10, restSeconds: 120, sortOrder: 3 },
+      { exerciseSlug: "goblet_squat", sets: 2, repsMin: 8, repsMax: 10, restSeconds: 120, sortOrder: 4 }
+    ]
+  }
+];
+
+export const DEFAULT_EXERCISE_ALTERNATIVES: DefaultExerciseAlternative[] = [
+  {
+    exerciseSlug: "plank",
+    alternativeExerciseSlug: "dead_bug",
+    reason: "core_stability_lower_back_friendly",
+    difficultyDelta: -1
+  },
+  {
+    exerciseSlug: "plank",
+    alternativeExerciseSlug: "bird_dog",
+    reason: "low_load_core_control",
+    difficultyDelta: -2
   }
 ];

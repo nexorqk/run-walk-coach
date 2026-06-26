@@ -1,5 +1,6 @@
 import { AlertTriangle, Info, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { ReadinessCheck } from "../components/ReadinessCheck.js";
 import { WeeklyPlan } from "../components/WeeklyPlan.js";
 import { WorkoutSummary } from "../components/WorkoutSummary.js";
 import { useAppStore } from "../store/app-store.js";
@@ -73,6 +74,8 @@ export function TodayPage() {
           {t({ en: "Start workout", ru: "Начать тренировку" })}
         </button>
       </section>
+
+      <ReadinessCheck onStartWorkout={startWorkout} />
 
       <WeeklyPlan
         recommendation={recommendation}

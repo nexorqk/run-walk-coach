@@ -7,8 +7,15 @@ const importedSession: ImportedSession = {
   totalDurationSec: 1800,
   totalRunSec: 600,
   totalWalkSec: 900,
+  distanceMeters: 2500,
+  avgPaceSecPerKm: 720,
+  avgSpeedKmh: 5,
+  cadenceSpm: 158,
+  stopwatchPulseBpm: 142,
+  heartRateZone: "ZONE_2",
   difficulty: 5,
   breathing: "MEDIUM",
+  breathingNote: "Could speak short phrases.",
   pain: "NONE"
 };
 
@@ -41,6 +48,9 @@ describe("normalizeImportedSession", () => {
     expect(session.remoteId).toBe("server-session-id");
     expect(session.localId).toBe("11111111-1111-4111-8111-111111111111");
     expect(session.templateLevel).toBe(1);
+    expect(session.distanceMeters).toBe(2500);
+    expect(session.heartRateZone).toBe("ZONE_2");
+    expect(session.breathingNote).toBe("Could speak short phrases.");
   });
 
   it("keeps browser-only UUID sessions pending for Google sync", () => {

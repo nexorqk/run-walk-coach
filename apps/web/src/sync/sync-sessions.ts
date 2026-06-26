@@ -21,8 +21,15 @@ function toCreatePayload(session: LocalWorkoutSession): CreateWorkoutSession {
     totalWalkSec: session.totalWalkSec,
     avgHr: session.avgHr ?? null,
     maxHr: session.maxHr ?? null,
+    stopwatchPulseBpm: session.stopwatchPulseBpm ?? null,
+    heartRateZone: session.heartRateZone ?? null,
+    distanceMeters: session.distanceMeters ?? null,
+    avgPaceSecPerKm: session.avgPaceSecPerKm ?? null,
+    avgSpeedKmh: session.avgSpeedKmh ?? null,
+    cadenceSpm: session.cadenceSpm ?? null,
     difficulty: session.difficulty,
     breathing: session.breathing,
+    breathingNote: session.breathingNote ?? null,
     pain: session.pain,
     notes: session.notes ?? null
   };

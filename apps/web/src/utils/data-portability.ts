@@ -13,6 +13,7 @@ import {
 import {
   LOCAL_PROFILE_KEY,
   LOCAL_TEMPLATES_KEY,
+  READINESS_CHECK_KEY,
   WEEKLY_PLAN_COMPLETION_KEY,
   WEEKLY_RUN_TARGET_KEY
 } from "./storage-keys.js";
@@ -32,6 +33,7 @@ export type BrowserDataExport = {
     theme: ReturnType<typeof getStoredTheme>;
     weeklyPlanCompletion?: Record<string, boolean>;
     weeklyRunTarget?: 2 | 3;
+    readinessChecks?: Record<string, unknown>;
   };
 };
 
@@ -94,7 +96,8 @@ export async function buildBrowserDataExport(
       language: getStoredLanguage(),
       theme: getStoredTheme(),
       weeklyPlanCompletion: readStoredJson<Record<string, boolean>>(WEEKLY_PLAN_COMPLETION_KEY),
-      weeklyRunTarget: getStoredWeeklyRunTarget()
+      weeklyRunTarget: getStoredWeeklyRunTarget(),
+      readinessChecks: readStoredJson<Record<string, unknown>>(READINESS_CHECK_KEY)
     }
   };
 }
@@ -115,7 +118,8 @@ export function withExportPreferences(data: unknown, source: "browser" | "server
       language: getStoredLanguage(),
       theme: getStoredTheme(),
       weeklyPlanCompletion: readStoredJson<Record<string, boolean>>(WEEKLY_PLAN_COMPLETION_KEY),
-      weeklyRunTarget: getStoredWeeklyRunTarget()
+      weeklyRunTarget: getStoredWeeklyRunTarget(),
+      readinessChecks: readStoredJson<Record<string, unknown>>(READINESS_CHECK_KEY)
     }
   };
 }
@@ -140,6 +144,16 @@ export function downloadJsonBackup(data: unknown, exportedAt = new Date().toISOS
 
 export function downloadBrowserDataExport(data: BrowserDataExport) {
   downloadJsonBackup(data, data.exportedAt);
+}
+
+export async function clearBrowserProgressData() {
+  await db.sessions.clear();
+  localStorage.removeItem(LOCAL_PROFILE_KEY);
+  localStorage.removeItem(LOCAL_TEMPLATES_KEY);
+  localStorage.removeItem(WEEKLY_PLAN_COMPLETION_KEY);
+  localStorage.removeItem(WEEKLY_RUN_TARGET_KEY);
+  localStorage.removeItem(READINESS_CHECK_KEY);
+  sessionStorage.removeItem("workoutDraft");
 }
 
 export async function importBrowserDataExport(
@@ -187,6 +201,12 @@ export async function importBrowserDataExport(
     localStorage.setItem(WEEKLY_RUN_TARGET_KEY, String(parsed.preferences.weeklyRunTarget));
   } else {
     localStorage.removeItem(WEEKLY_RUN_TARGET_KEY);
+  }
+
+  if (parsed.preferences?.readinessChecks) {
+    localStorage.setItem(READINESS_CHECK_KEY, JSON.stringify(parsed.preferences.readinessChecks));
+  } else {
+    localStorage.removeItem(READINESS_CHECK_KEY);
   }
 
   return {

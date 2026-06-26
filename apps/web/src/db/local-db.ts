@@ -1,5 +1,5 @@
 import Dexie, { type Table } from "dexie";
-import type { BreathingLevel, PainType } from "@run-walk-coach/shared";
+import type { BreathingLevel, HeartRateZone, PainType } from "@run-walk-coach/shared";
 
 export type SyncStatus = "local" | "pending" | "synced" | "failed";
 
@@ -17,8 +17,15 @@ export type LocalWorkoutSession = {
   totalWalkSec: number;
   avgHr?: number | null;
   maxHr?: number | null;
+  stopwatchPulseBpm?: number | null;
+  heartRateZone?: HeartRateZone | null;
+  distanceMeters?: number | null;
+  avgPaceSecPerKm?: number | null;
+  avgSpeedKmh?: number | null;
+  cadenceSpm?: number | null;
   difficulty: number;
   breathing: BreathingLevel;
+  breathingNote?: string | null;
   pain: PainType;
   notes?: string | null;
   createdAt: string;

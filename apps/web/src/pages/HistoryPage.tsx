@@ -3,6 +3,7 @@ import {
   formatTime,
   painTypeValues,
   type BreathingLevel,
+  type HeartRateZone,
   type PainType,
   type UpdateWorkoutSession,
   type WorkoutSession
@@ -22,6 +23,23 @@ import {
   type AppLanguage,
   useLanguage
 } from "../utils/language.js";
+import {
+  deriveAvgPaceSecPerKm,
+  deriveAvgSpeedKmh,
+  distanceMetersToKmInput,
+  formatCadenceSpm,
+  formatDistanceMeters,
+  formatPaceSecPerKm,
+  formatSpeedKmh,
+  heartRateZoneLabel,
+  heartRateZoneShortLabel,
+  heartRateZoneValues,
+  paceSecPerKmToInput,
+  parseDistanceKmToMeters,
+  parseOptionalFloat,
+  parseOptionalInt,
+  parsePaceToSecPerKm
+} from "../utils/running-metrics.js";
 
 type HistoryItem = {
   key: string;
@@ -36,7 +54,14 @@ type HistoryItem = {
   difficulty: number;
   avgHr?: number | null;
   maxHr?: number | null;
+  stopwatchPulseBpm?: number | null;
+  heartRateZone?: HeartRateZone | null;
+  distanceMeters?: number | null;
+  avgPaceSecPerKm?: number | null;
+  avgSpeedKmh?: number | null;
+  cadenceSpm?: number | null;
   breathing: BreathingLevel;
+  breathingNote?: string | null;
   pain: PainType;
   notes?: string | null;
   syncStatus: SyncStatus;
@@ -64,7 +89,14 @@ function localToHistory(session: LocalWorkoutSession, language: AppLanguage): Hi
     difficulty: session.difficulty,
     avgHr: session.avgHr,
     maxHr: session.maxHr,
+    stopwatchPulseBpm: session.stopwatchPulseBpm,
+    heartRateZone: session.heartRateZone,
+    distanceMeters: session.distanceMeters,
+    avgPaceSecPerKm: session.avgPaceSecPerKm,
+    avgSpeedKmh: session.avgSpeedKmh,
+    cadenceSpm: session.cadenceSpm,
     breathing: session.breathing,
+    breathingNote: session.breathingNote,
     pain: session.pain,
     notes: session.notes,
     syncStatus: session.syncStatus
@@ -84,7 +116,14 @@ function remoteToHistory(session: WorkoutSession, language: AppLanguage): Histor
     difficulty: session.difficulty,
     avgHr: session.avgHr,
     maxHr: session.maxHr,
+    stopwatchPulseBpm: session.stopwatchPulseBpm,
+    heartRateZone: session.heartRateZone,
+    distanceMeters: session.distanceMeters,
+    avgPaceSecPerKm: session.avgPaceSecPerKm,
+    avgSpeedKmh: session.avgSpeedKmh,
+    cadenceSpm: session.cadenceSpm,
     breathing: session.breathing,
+    breathingNote: session.breathingNote,
     pain: session.pain,
     notes: session.notes,
     syncStatus: "synced"
@@ -107,18 +146,36 @@ function SessionEditForm({
   const [difficulty, setDifficulty] = useState(item.difficulty);
   const [avgHr, setAvgHr] = useState(numberInput(item.avgHr));
   const [maxHr, setMaxHr] = useState(numberInput(item.maxHr));
+  const [distanceKm, setDistanceKm] = useState(distanceMetersToKmInput(item.distanceMeters));
+  const [avgPace, setAvgPace] = useState(paceSecPerKmToInput(item.avgPaceSecPerKm));
+  const [avgSpeed, setAvgSpeed] = useState(numberInput(item.avgSpeedKmh));
+  const [cadenceSpm, setCadenceSpm] = useState(numberInput(item.cadenceSpm));
+  const [stopwatchPulseBpm, setStopwatchPulseBpm] = useState(numberInput(item.stopwatchPulseBpm));
+  const [heartRateZone, setHeartRateZone] = useState<HeartRateZone | "">(item.heartRateZone ?? "");
   const [breathing, setBreathing] = useState<BreathingLevel>(item.breathing);
+  const [breathingNote, setBreathingNote] = useState(item.breathingNote ?? "");
   const [pain, setPain] = useState<PainType>(item.pain);
   const [notes, setNotes] = useState(item.notes ?? "");
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const distanceMeters = parseDistanceKmToMeters(distanceKm);
+    const avgPaceInput = parsePaceToSecPerKm(avgPace);
+    const avgSpeedInput = parseOptionalFloat(avgSpeed);
+
     onSave({
       completed,
       difficulty,
       avgHr: optionalNumber(avgHr),
       maxHr: optionalNumber(maxHr),
+      stopwatchPulseBpm: parseOptionalInt(stopwatchPulseBpm),
+      heartRateZone: heartRateZone || null,
+      distanceMeters,
+      avgPaceSecPerKm: avgPaceInput ?? deriveAvgPaceSecPerKm(distanceMeters, item.totalDurationSec),
+      avgSpeedKmh: avgSpeedInput ?? deriveAvgSpeedKmh(distanceMeters, item.totalDurationSec),
+      cadenceSpm: parseOptionalInt(cadenceSpm),
       breathing,
+      breathingNote: breathingNote.trim() || null,
       pain,
       notes: notes.trim() || null
     });
@@ -180,7 +237,85 @@ function SessionEditForm({
 
       <div className="form-grid two-column">
         <label>
-          <span className="field-label">{t({ en: "Breathing", ru: "Дыхание" })}</span>
+          <span className="field-label">{t({ en: "Distance, km", ru: "Дистанция, км" })}</span>
+          <input
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            type="number"
+            value={distanceKm}
+            onChange={(event) => setDistanceKm(event.target.value)}
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
+          />
+        </label>
+        <label>
+          <span className="field-label">{t({ en: "Avg pace", ru: "Средний темп" })}</span>
+          <input
+            inputMode="numeric"
+            type="text"
+            value={avgPace}
+            onChange={(event) => setAvgPace(event.target.value)}
+            placeholder="5:45"
+          />
+        </label>
+        <label>
+          <span className="field-label">{t({ en: "Speed, km/h", ru: "Скорость, км/ч" })}</span>
+          <input
+            inputMode="decimal"
+            min="0.1"
+            step="0.1"
+            type="number"
+            value={avgSpeed}
+            onChange={(event) => setAvgSpeed(event.target.value)}
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
+          />
+        </label>
+        <label>
+          <span className="field-label">{t({ en: "Cadence, spm", ru: "Каденс, шаг/мин" })}</span>
+          <input
+            inputMode="numeric"
+            min="50"
+            max="260"
+            type="number"
+            value={cadenceSpm}
+            onChange={(event) => setCadenceSpm(event.target.value)}
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
+          />
+        </label>
+      </div>
+
+      <div className="form-grid two-column">
+        <label>
+          <span className="field-label">{t({ en: "Pulse by stopwatch", ru: "Пульс по секундомеру" })}</span>
+          <input
+            inputMode="numeric"
+            min="30"
+            max="260"
+            type="number"
+            value={stopwatchPulseBpm}
+            onChange={(event) => setStopwatchPulseBpm(event.target.value)}
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
+          />
+        </label>
+        <label>
+          <span className="field-label">{t({ en: "Heart-rate zone", ru: "Зона пульса" })}</span>
+          <select
+            value={heartRateZone}
+            onChange={(event) => setHeartRateZone(event.target.value as HeartRateZone | "")}
+          >
+            <option value="">{t({ en: "Not set", ru: "Не выбрана" })}</option>
+            {heartRateZoneValues.map((value) => (
+              <option key={value} value={value}>
+                {heartRateZoneLabel(value, language)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="form-grid two-column">
+        <label>
+          <span className="field-label">{t({ en: "Subjective breathing", ru: "Субъективное дыхание" })}</span>
           <select value={breathing} onChange={(event) => setBreathing(event.target.value as BreathingLevel)}>
             {breathingLevelValues.map((value) => (
               <option key={value} value={value}>
@@ -200,6 +335,16 @@ function SessionEditForm({
           </select>
         </label>
       </div>
+
+      <label>
+        <span className="field-label">{t({ en: "Breathing details", ru: "Детали дыхания" })}</span>
+        <textarea
+          rows={3}
+          value={breathingNote}
+          onChange={(event) => setBreathingNote(event.target.value)}
+          placeholder={t({ en: "Optional", ru: "Необязательно" })}
+        />
+      </label>
 
       <label>
         <span className="field-label">{t({ en: "Notes", ru: "Заметки" })}</span>
@@ -410,9 +555,32 @@ export function HistoryPage() {
               <span>D{item.difficulty}</span>
               <span>Avg {item.avgHr ?? "-"}</span>
               <span>Max {item.maxHr ?? "-"}</span>
+              {item.distanceMeters !== null && item.distanceMeters !== undefined ? (
+                <span>{formatDistanceMeters(item.distanceMeters)}</span>
+              ) : null}
+              {item.avgPaceSecPerKm !== null && item.avgPaceSecPerKm !== undefined ? (
+                <span>{formatPaceSecPerKm(item.avgPaceSecPerKm)}</span>
+              ) : null}
+              {item.avgSpeedKmh !== null && item.avgSpeedKmh !== undefined ? (
+                <span>{formatSpeedKmh(item.avgSpeedKmh)}</span>
+              ) : null}
+              {item.cadenceSpm !== null && item.cadenceSpm !== undefined ? (
+                <span>{formatCadenceSpm(item.cadenceSpm)}</span>
+              ) : null}
+              {item.stopwatchPulseBpm !== null && item.stopwatchPulseBpm !== undefined ? (
+                <span>{t({ en: "Pulse", ru: "Пульс" })} {item.stopwatchPulseBpm}</span>
+              ) : null}
+              {item.heartRateZone ? (
+                <span>{heartRateZoneShortLabel(item.heartRateZone, language)}</span>
+              ) : null}
               <span>{breathingLabel(item.breathing, language)}</span>
               <span>{painLabel(item.pain, language)}</span>
             </div>
+            {item.breathingNote ? (
+              <p className="session-notes">
+                <strong>{t({ en: "Breathing", ru: "Дыхание" })}:</strong> {item.breathingNote}
+              </p>
+            ) : null}
             {item.notes ? <p className="session-notes">{item.notes}</p> : null}
             {editingKey === item.key ? (
               <SessionEditForm

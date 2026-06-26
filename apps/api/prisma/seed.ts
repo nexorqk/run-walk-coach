@@ -1,42 +1,19 @@
-import { PrismaClient } from "@prisma/client";
-import { DEFAULT_WORKOUT_TEMPLATES } from "@run-walk-coach/shared";
-
-const prisma = new PrismaClient();
+import {
+  DEFAULT_STRENGTH_EXERCISES,
+  DEFAULT_STRENGTH_WORKOUT_TEMPLATES,
+  DEFAULT_WORKOUT_TEMPLATES
+} from "@run-walk-coach/shared";
+import { ensureDefaultStrengthCatalog, ensureDefaultTemplates } from "../src/bootstrap.js";
+import { prisma } from "../src/prisma.js";
 
 async function main() {
-  for (const template of DEFAULT_WORKOUT_TEMPLATES) {
-    const existing = await prisma.workoutTemplate.findFirst({
-      where: {
-        userId: null,
-        isDefault: true,
-        level: template.level
-      }
-    });
-
-    const data = {
-      userId: null,
-      name: template.name,
-      level: template.level,
-      type: template.type,
-      warmupSec: template.warmupSec,
-      runSec: template.runSec,
-      walkSec: template.walkSec,
-      repeats: template.repeats,
-      cooldownSec: template.cooldownSec,
-      isDefault: true
-    };
-
-    if (existing) {
-      await prisma.workoutTemplate.update({
-        where: { id: existing.id },
-        data
-      });
-    } else {
-      await prisma.workoutTemplate.create({ data });
-    }
-  }
+  await ensureDefaultTemplates();
+  await ensureDefaultStrengthCatalog();
 
   console.log(`Seeded ${DEFAULT_WORKOUT_TEMPLATES.length} templates.`);
+  console.log(
+    `Seeded ${DEFAULT_STRENGTH_EXERCISES.length} exercises and ${DEFAULT_STRENGTH_WORKOUT_TEMPLATES.length} strength templates.`
+  );
 }
 
 main()

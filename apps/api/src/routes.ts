@@ -358,8 +358,15 @@ export async function registerRoutes(app: FastifyInstance) {
         totalWalkSec: parsed.data.totalWalkSec,
         avgHr: parsed.data.avgHr ?? null,
         maxHr: parsed.data.maxHr ?? null,
+        stopwatchPulseBpm: parsed.data.stopwatchPulseBpm ?? null,
+        heartRateZone: parsed.data.heartRateZone ?? null,
+        distanceMeters: parsed.data.distanceMeters ?? null,
+        avgPaceSecPerKm: parsed.data.avgPaceSecPerKm ?? null,
+        avgSpeedKmh: parsed.data.avgSpeedKmh ?? null,
+        cadenceSpm: parsed.data.cadenceSpm ?? null,
         difficulty: parsed.data.difficulty,
         breathing: parsed.data.breathing,
+        breathingNote: parsed.data.breathingNote ?? null,
         pain: parsed.data.pain,
         notes: parsed.data.notes ?? null
       },
@@ -486,7 +493,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/export/json", async (request, reply) => {
     const user = await requireCurrentUser(request, reply);
     if (!user) return;
-    const [templates, sessions] = await Promise.all([
+    const [templates, sessions, exercises, strengthTemplates, strengthSessions, userRules, userExerciseStates] = await Promise.all([
       prisma.workoutTemplate.findMany({
         where: {
           OR: [{ userId: null }, { userId: user.id }]
@@ -497,6 +504,47 @@ export async function registerRoutes(app: FastifyInstance) {
         where: { userId: user.id },
         include: { template: true },
         orderBy: [{ date: "desc" }]
+      }),
+      prisma.exercise.findMany({
+        include: {
+          alternatives: {
+            include: { alternativeExercise: true }
+          }
+        },
+        orderBy: [{ category: "asc" }, { name: "asc" }]
+      }),
+      prisma.strengthWorkoutTemplate.findMany({
+        include: {
+          exercises: {
+            include: { exercise: true },
+            orderBy: { sortOrder: "asc" }
+          }
+        },
+        orderBy: [{ name: "asc" }]
+      }),
+      prisma.strengthWorkoutSession.findMany({
+        where: { userId: user.id },
+        include: {
+          template: true,
+          setLogs: {
+            include: { exercise: true },
+            orderBy: [{ exerciseId: "asc" }, { setNumber: "asc" }]
+          },
+          feedback: {
+            include: { exercise: true },
+            orderBy: [{ exerciseId: "asc" }]
+          }
+        },
+        orderBy: [{ date: "desc" }]
+      }),
+      prisma.userRule.findMany({
+        where: { userId: user.id },
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }]
+      }),
+      prisma.userExerciseState.findMany({
+        where: { userId: user.id },
+        include: { exercise: true },
+        orderBy: [{ updatedAt: "desc" }]
       })
     ]);
 
@@ -504,7 +552,12 @@ export async function registerRoutes(app: FastifyInstance) {
       exportedAt: new Date().toISOString(),
       profile: user,
       templates,
-      sessions
+      sessions,
+      exercises,
+      strengthTemplates,
+      strengthSessions,
+      userRules,
+      userExerciseStates
     };
   });
 }

@@ -22,6 +22,14 @@ enum BreathingLevel {
   VERY_HARD
 }
 
+enum HeartRateZone {
+  ZONE_1
+  ZONE_2
+  ZONE_3
+  ZONE_4
+  ZONE_5
+}
+
 enum PainType {
   NONE
   SHIN
@@ -48,6 +56,9 @@ model User {
   recoveryCode   RecoveryCode?
   templates      WorkoutTemplate[]
   sessions       WorkoutSession[]
+  strengthSessions StrengthWorkoutSession[]
+  exerciseStates   UserExerciseState[]
+  rules            UserRule[]
 }
 
 model AuthSession {
@@ -94,27 +105,184 @@ model WorkoutTemplate {
 }
 
 model WorkoutSession {
-  id               String           @id @default(cuid())
-  userId           String
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  clientSessionId  String?
-  templateId       String?
-  template         WorkoutTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  date             DateTime
-  completed        Boolean          @default(true)
-  totalDurationSec Int
-  totalRunSec      Int
-  totalWalkSec     Int
-  avgHr            Int?
-  maxHr            Int?
-  difficulty       Int
-  breathing        BreathingLevel
-  pain             PainType
-  notes            String?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id                String           @id @default(cuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientSessionId   String?
+  templateId        String?
+  template          WorkoutTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  date              DateTime
+  completed         Boolean          @default(true)
+  totalDurationSec  Int
+  totalRunSec       Int
+  totalWalkSec      Int
+  avgHr             Int?
+  maxHr             Int?
+  stopwatchPulseBpm Int?
+  heartRateZone     HeartRateZone?
+  distanceMeters    Int?
+  avgPaceSecPerKm   Int?
+  avgSpeedKmh       Float?
+  cadenceSpm        Int?
+  difficulty        Int
+  breathing         BreathingLevel
+  breathingNote     String?
+  pain              PainType
+  notes             String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@unique([userId, clientSessionId])
   @@index([userId, date])
   @@index([templateId])
+}
+
+model Exercise {
+  id              String                     @id @default(cuid())
+  slug            String                     @unique
+  name            String
+  category        String
+  movementPattern String
+  equipment       String
+  difficulty      Int
+  createdAt       DateTime                   @default(now())
+  templateLinks   StrengthWorkoutExercise[]
+  setLogs         StrengthSetLog[]
+  feedback        StrengthExerciseFeedback[]
+  userStates      UserExerciseState[]
+  alternatives    ExerciseAlternative[]      @relation("ExerciseAlternatives")
+  alternativeFor  ExerciseAlternative[]      @relation("ExerciseAlternativeTargets")
+
+  @@index([category])
+  @@index([movementPattern])
+}
+
+model StrengthWorkoutTemplate {
+  id          String                    @id @default(cuid())
+  code        String                    @unique
+  name        String
+  isDefault   Boolean                   @default(false)
+  createdAt   DateTime                  @default(now())
+  exercises   StrengthWorkoutExercise[]
+  sessions    StrengthWorkoutSession[]
+}
+
+model StrengthWorkoutExercise {
+  id          String                  @id @default(cuid())
+  templateId  String
+  template    StrengthWorkoutTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise                @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  sets        Int
+  repsMin     Int
+  repsMax     Int
+  restSeconds Int
+  sortOrder   Int
+
+  @@unique([templateId, exerciseId])
+  @@index([templateId, sortOrder])
+  @@index([exerciseId])
+}
+
+model StrengthWorkoutSession {
+  id              String                     @id @default(cuid())
+  userId          String
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId      String?
+  template        StrengthWorkoutTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  date            DateTime
+  completed       Boolean                    @default(true)
+  durationMinutes Int?
+  difficulty      Int
+  notes           String?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  setLogs         StrengthSetLog[]
+  feedback        StrengthExerciseFeedback[]
+
+  @@index([userId, date])
+  @@index([templateId])
+}
+
+model StrengthSetLog {
+  id          String                 @id @default(cuid())
+  sessionId   String
+  session     StrengthWorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise               @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  setNumber   Int
+  reps        Int
+  weightKg    Float?
+  rpe         Int?
+  completed   Boolean                @default(true)
+  createdAt   DateTime               @default(now())
+
+  @@unique([sessionId, exerciseId, setNumber])
+  @@index([exerciseId])
+}
+
+model StrengthExerciseFeedback {
+  id                  String                 @id @default(cuid())
+  sessionId           String
+  session             StrengthWorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId          String
+  exercise            Exercise               @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  muscleDifficulty    Int?
+  breathingDifficulty Int?
+  pain                PainType
+  comment             String?
+  createdAt           DateTime               @default(now())
+
+  @@unique([sessionId, exerciseId])
+  @@index([exerciseId])
+}
+
+model UserExerciseState {
+  id                     String   @id @default(cuid())
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId             String
+  exercise               Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  currentLevel           Int      @default(1)
+  bestSetReps            Int?
+  bestWeightKg           Float?
+  bestVolume             Float?
+  lastDifficulty         Int?
+  averageDifficultyLast3 Float?
+  lastPain               PainType?
+  trend                  String?
+  nextRecommendedSets    Int?
+  nextRecommendedReps    String?
+  updatedAt              DateTime @updatedAt
+
+  @@unique([userId, exerciseId])
+  @@index([exerciseId])
+}
+
+model UserRule {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  payload   Json
+  priority  Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, type])
+  @@index([userId, priority])
+}
+
+model ExerciseAlternative {
+  id                    String   @id @default(cuid())
+  exerciseId            String
+  exercise              Exercise @relation("ExerciseAlternatives", fields: [exerciseId], references: [id], onDelete: Cascade)
+  alternativeExerciseId String
+  alternativeExercise   Exercise @relation("ExerciseAlternativeTargets", fields: [alternativeExerciseId], references: [id], onDelete: Cascade)
+  reason                String
+  difficultyDelta       Int      @default(0)
+
+  @@unique([exerciseId, alternativeExerciseId, reason])
+  @@index([alternativeExerciseId])
 }

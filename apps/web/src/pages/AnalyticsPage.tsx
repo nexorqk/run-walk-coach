@@ -11,6 +11,12 @@ import {
   localizeTemplateName,
   useLanguage
 } from "../utils/language.js";
+import {
+  formatCadenceSpm,
+  formatDistanceMeters,
+  formatPaceSecPerKm,
+  formatSpeedKmh
+} from "../utils/running-metrics.js";
 
 type TrendSession = {
   key: string;
@@ -20,6 +26,10 @@ type TrendSession = {
   difficulty: number;
   avgHr?: number | null;
   maxHr?: number | null;
+  distanceMeters?: number | null;
+  avgPaceSecPerKm?: number | null;
+  avgSpeedKmh?: number | null;
+  cadenceSpm?: number | null;
   templateLevel?: number;
 };
 
@@ -40,6 +50,10 @@ function localToTrend(session: LocalWorkoutSession): TrendSession {
     difficulty: session.difficulty,
     avgHr: session.avgHr,
     maxHr: session.maxHr,
+    distanceMeters: session.distanceMeters,
+    avgPaceSecPerKm: session.avgPaceSecPerKm,
+    avgSpeedKmh: session.avgSpeedKmh,
+    cadenceSpm: session.cadenceSpm,
     templateLevel: session.templateLevel
   };
 }
@@ -53,6 +67,10 @@ function remoteToTrend(session: WorkoutSession): TrendSession {
     difficulty: session.difficulty,
     avgHr: session.avgHr,
     maxHr: session.maxHr,
+    distanceMeters: session.distanceMeters,
+    avgPaceSecPerKm: session.avgPaceSecPerKm,
+    avgSpeedKmh: session.avgSpeedKmh,
+    cadenceSpm: session.cadenceSpm,
     templateLevel: session.template?.level
   };
 }
@@ -83,6 +101,18 @@ function formatTimeDelta(value: number | null) {
   }
 
   return `${value > 0 ? "+" : "-"}${formatTime(Math.abs(value))}`;
+}
+
+function formatDistanceDelta(value: number | null) {
+  if (value === null) {
+    return "-";
+  }
+
+  if (value === 0) {
+    return "0.00 km";
+  }
+
+  return `${value > 0 ? "+" : "-"}${formatDistanceMeters(Math.abs(value))}`;
 }
 
 function buildLocalSummary(
@@ -190,6 +220,8 @@ export function AnalyticsPage() {
           Math.max(1, weekSessions.reduce((sum, session) => sum + session.totalDurationSec, 0));
     const weekRunSec = weekSessions.reduce((sum, session) => sum + session.totalRunSec, 0);
     const previousWeekRunSec = previousWeekSessions.reduce((sum, session) => sum + session.totalRunSec, 0);
+    const weekDistanceMeters = weekSessions.reduce((sum, session) => sum + (session.distanceMeters ?? 0), 0);
+    const previousWeekDistanceMeters = previousWeekSessions.reduce((sum, session) => sum + (session.distanceMeters ?? 0), 0);
     const avgLastThreeDifficulty = average(lastThree.map((session) => session.difficulty));
     const avgPreviousThreeDifficulty = average(previousThree.map((session) => session.difficulty));
     const avgDifficultyDelta =
@@ -198,12 +230,20 @@ export function AnalyticsPage() {
         : null;
     const avgMaxHr = average(latestSix.map((session) => session.maxHr).filter((value): value is number => value !== null && value !== undefined));
     const previousAvgMaxHr = average(previousSix.map((session) => session.maxHr).filter((value): value is number => value !== null && value !== undefined));
+    const avgPaceSecPerKm = average(latestSix.map((session) => session.avgPaceSecPerKm).filter((value): value is number => value !== null && value !== undefined));
+    const avgSpeedKmh = average(latestSix.map((session) => session.avgSpeedKmh).filter((value): value is number => value !== null && value !== undefined));
+    const avgCadenceSpm = average(latestSix.map((session) => session.cadenceSpm).filter((value): value is number => value !== null && value !== undefined));
 
     return {
       recent: latestSix,
       runRatio,
       weekRunSec,
       weekRunDeltaSec: previousWeekSessions.length === 0 ? null : weekRunSec - previousWeekRunSec,
+      weekDistanceMeters,
+      weekDistanceDeltaMeters: previousWeekSessions.length === 0 ? null : weekDistanceMeters - previousWeekDistanceMeters,
+      avgPaceSecPerKm,
+      avgSpeedKmh,
+      avgCadenceSpm,
       avgDifficultyDelta,
       avgMaxHr,
       avgMaxHrDelta: avgMaxHr !== null && previousAvgMaxHr !== null ? avgMaxHr - previousAvgMaxHr : null
@@ -280,6 +320,30 @@ export function AnalyticsPage() {
               <p>{t({ en: "of total workout time", ru: "от общего времени" })}</p>
             </div>
             <div className="trend-card">
+              <TrendingUp aria-hidden="true" size={22} />
+              <span>{t({ en: "Distance", ru: "Дистанция" })}</span>
+              <strong>{formatDistanceMeters(trends.weekDistanceMeters)}</strong>
+              <p>{t({ en: "vs previous week", ru: "к прошлой неделе" })}: {formatDistanceDelta(trends.weekDistanceDeltaMeters)}</p>
+            </div>
+            <div className="trend-card">
+              <Activity aria-hidden="true" size={22} />
+              <span>{t({ en: "Avg pace", ru: "Средний темп" })}</span>
+              <strong>{formatPaceSecPerKm(trends.avgPaceSecPerKm)}</strong>
+              <p>{t({ en: "latest saved pace values", ru: "по последним сохранённым темпам" })}</p>
+            </div>
+            <div className="trend-card">
+              <Percent aria-hidden="true" size={22} />
+              <span>{t({ en: "Avg speed", ru: "Средняя скорость" })}</span>
+              <strong>{formatSpeedKmh(trends.avgSpeedKmh)}</strong>
+              <p>{t({ en: "latest saved speed values", ru: "по последним сохранённым скоростям" })}</p>
+            </div>
+            <div className="trend-card">
+              <Activity aria-hidden="true" size={22} />
+              <span>{t({ en: "Cadence", ru: "Каденс" })}</span>
+              <strong>{formatCadenceSpm(trends.avgCadenceSpm === null ? null : Math.round(trends.avgCadenceSpm))}</strong>
+              <p>{t({ en: "steps per minute", ru: "шагов в минуту" })}</p>
+            </div>
+            <div className="trend-card">
               <Activity aria-hidden="true" size={22} />
               <span>{t({ en: "Difficulty trend", ru: "Тренд сложности" })}</span>
               <strong>{formatDelta(trends.avgDifficultyDelta)}</strong>
@@ -309,6 +373,12 @@ export function AnalyticsPage() {
                     <span>{formatDateTime(session.date, language)}</span>
                     <strong>{session.templateLevel ? `L${session.templateLevel}` : "-"}</strong>
                     <span>{t({ en: "Run", ru: "Бег" })} {formatTime(session.totalRunSec)}</span>
+                    {session.distanceMeters !== null && session.distanceMeters !== undefined ? (
+                      <span>{formatDistanceMeters(session.distanceMeters)}</span>
+                    ) : null}
+                    {session.avgPaceSecPerKm !== null && session.avgPaceSecPerKm !== undefined ? (
+                      <span>{formatPaceSecPerKm(session.avgPaceSecPerKm)}</span>
+                    ) : null}
                     <span>D{session.difficulty}</span>
                     <span>Max {session.maxHr ?? "-"}</span>
                   </div>

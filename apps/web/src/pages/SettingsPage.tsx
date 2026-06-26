@@ -1,6 +1,7 @@
 import { buildWorkoutTimeline, formatTime, type AuthProviders } from "@run-walk-coach/shared";
-import { AlertTriangle, Download, FileJson, Languages, LogIn, Monitor, Moon, Save, Sun, Trash2, Upload } from "lucide-react";
+import { AlertTriangle, Download, FileJson, Languages, LogIn, Monitor, Moon, Save, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   deleteProfile,
   getAuthProviders,
@@ -9,18 +10,17 @@ import {
   updateProfile,
   updateWorkoutTemplate
 } from "../api/client.js";
-import { db } from "../db/local-db.js";
 import { retryPendingSessions } from "../sync/sync-sessions.js";
 import { useAppStore } from "../store/app-store.js";
 import {
   buildBrowserDataExport,
+  clearBrowserProgressData,
   countExportedSessions,
   downloadJsonBackup,
   withExportPreferences,
   importBrowserDataExport
 } from "../utils/data-portability.js";
 import { localizeTemplateName, useLanguage } from "../utils/language.js";
-import { LOCAL_PROFILE_KEY, LOCAL_TEMPLATES_KEY } from "../utils/storage-keys.js";
 import { getStoredTheme, setStoredTheme, type AppTheme } from "../utils/theme.js";
 
 export function SettingsPage() {
@@ -204,9 +204,7 @@ export function SettingsPage() {
         await deleteProfile();
       }
 
-      await db.sessions.clear();
-      localStorage.removeItem(LOCAL_PROFILE_KEY);
-      localStorage.removeItem(LOCAL_TEMPLATES_KEY);
+      await clearBrowserProgressData();
       setWorkoutDraft(undefined);
       await loadInitialData();
       setStatus(t({ en: "Progress deleted", ru: "Прогресс удалён" }));
@@ -588,13 +586,25 @@ export function SettingsPage() {
 
       <section className="form-section">
         <div className="section-heading">
-          <h2>{t({ en: "Privacy", ru: "Приватность" })}</h2>
+          <h2>{t({ en: "Data & Privacy", ru: "Данные и приватность" })}</h2>
           <p className="muted">
-            <a className="inline-link" href="/privacy.html">
-              {t({ en: "Privacy policy", ru: "Политика приватности" })}
-            </a>
+            {t({
+              en: "See where data is stored, what syncs, and how export or delete works.",
+              ru: "Посмотри, где хранятся данные, что синхронизируется, и как работает экспорт или удаление."
+            })}
           </p>
         </div>
+
+        <Link className="secondary-action" to="/data-privacy">
+          <ShieldCheck aria-hidden="true" size={23} />
+          {t({ en: "Open Data & Privacy", ru: "Открыть Данные и приватность" })}
+        </Link>
+
+        <p className="muted">
+          <a className="inline-link" href="/privacy.html">
+            {t({ en: "Privacy policy", ru: "Политика приватности" })}
+          </a>
+        </p>
 
         <button
           className="secondary-action danger"

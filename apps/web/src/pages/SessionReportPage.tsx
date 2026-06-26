@@ -2,6 +2,7 @@ import {
   breathingLevelValues,
   painTypeValues,
   type BreathingLevel,
+  type HeartRateZone,
   type PainType
 } from "@run-walk-coach/shared";
 import { ArrowRight, HeartPulse, History, Save } from "lucide-react";
@@ -17,6 +18,21 @@ import {
   type AppLanguage,
   useLanguage
 } from "../utils/language.js";
+import {
+  deriveAvgPaceSecPerKm,
+  deriveAvgSpeedKmh,
+  formatCadenceSpm,
+  formatDistanceMeters,
+  formatPaceSecPerKm,
+  formatSpeedKmh,
+  heartRateZoneLabel,
+  heartRateZoneShortLabel,
+  heartRateZoneValues,
+  parseDistanceKmToMeters,
+  parseOptionalFloat,
+  parseOptionalInt,
+  parsePaceToSecPerKm
+} from "../utils/running-metrics.js";
 
 function optionalNumber(value: string) {
   return value.trim() === "" ? null : Number(value);
@@ -26,9 +42,16 @@ type SavedReport = {
   completed: boolean;
   difficulty: number;
   breathing: BreathingLevel;
+  breathingNote: string | null;
   pain: PainType;
   avgHr: number | null;
   maxHr: number | null;
+  stopwatchPulseBpm: number | null;
+  heartRateZone: HeartRateZone | null;
+  distanceMeters: number | null;
+  avgPaceSecPerKm: number | null;
+  avgSpeedKmh: number | null;
+  cadenceSpm: number | null;
   templateName?: string;
   templateLevel?: number;
 };
@@ -51,6 +74,7 @@ function buildPostWorkoutAdvice(
   const t = (copy: Record<AppLanguage, string>) => text(language, copy);
   const maxHr = report.maxHr;
   const avgHr = report.avgHr;
+  const stopwatchPulseBpm = report.stopwatchPulseBpm;
 
   if (!report.completed) {
     return {
@@ -93,6 +117,36 @@ function buildPostWorkoutAdvice(
       next: t({
         en: "Start slower, add walk breaks sooner, and let HR drop before the next run interval.",
         ru: "Начинай медленнее, раньше добавляй шаг и жди снижения пульса перед следующим беговым отрезком."
+      })
+    };
+  }
+
+  if (stopwatchPulseBpm !== null && stopwatchPulseBpm >= 170) {
+    return {
+      tone: "caution",
+      title: t({ en: "Measured pulse was high", ru: "Замеренный пульс высокий" }),
+      body: t({
+        en: "A stopwatch pulse this high usually means the effort moved out of easy aerobic work.",
+        ru: "Такой пульс по секундомеру обычно означает, что нагрузка ушла выше лёгкой аэробной работы."
+      }),
+      next: t({
+        en: "Use shorter run segments and wait for pulse to settle before running again.",
+        ru: "Сделай беговые отрезки короче и жди снижения пульса перед следующим бегом."
+      })
+    };
+  }
+
+  if (report.heartRateZone === "ZONE_5" || report.heartRateZone === "ZONE_4") {
+    return {
+      tone: "caution",
+      title: t({ en: "Heart-rate zone was hard", ru: "Зона пульса была тяжёлой" }),
+      body: t({
+        en: "For base building, most work should stay below hard zones.",
+        ru: "Для развития базы большая часть работы должна оставаться ниже тяжёлых зон."
+      }),
+      next: t({
+        en: "Repeat this session easier before increasing load.",
+        ru: "Повтори эту тренировку легче перед увеличением нагрузки."
       })
     };
   }
@@ -194,7 +248,14 @@ export function SessionReportPage() {
   const [difficulty, setDifficulty] = useState(5);
   const [avgHr, setAvgHr] = useState("");
   const [maxHr, setMaxHr] = useState("");
+  const [distanceKm, setDistanceKm] = useState("");
+  const [avgPace, setAvgPace] = useState("");
+  const [avgSpeed, setAvgSpeed] = useState("");
+  const [cadenceSpm, setCadenceSpm] = useState("");
+  const [stopwatchPulseBpm, setStopwatchPulseBpm] = useState("");
+  const [heartRateZone, setHeartRateZone] = useState<HeartRateZone | "">("");
   const [breathing, setBreathing] = useState<BreathingLevel>("MEDIUM");
+  const [breathingNote, setBreathingNote] = useState("");
   const [pain, setPain] = useState<PainType>("NONE");
   const [notes, setNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -247,6 +308,30 @@ export function SessionReportPage() {
             <span className="metric-label">{t({ en: "Pain", ru: "Боль" })}</span>
             <strong>{painLabel(savedReport.pain, language)}</strong>
           </div>
+          <div className="metric">
+            <span className="metric-label">{t({ en: "Distance", ru: "Дистанция" })}</span>
+            <strong>{formatDistanceMeters(savedReport.distanceMeters)}</strong>
+          </div>
+          <div className="metric">
+            <span className="metric-label">{t({ en: "Avg pace", ru: "Средний темп" })}</span>
+            <strong>{formatPaceSecPerKm(savedReport.avgPaceSecPerKm)}</strong>
+          </div>
+          <div className="metric">
+            <span className="metric-label">{t({ en: "Speed", ru: "Скорость" })}</span>
+            <strong>{formatSpeedKmh(savedReport.avgSpeedKmh)}</strong>
+          </div>
+          <div className="metric">
+            <span className="metric-label">{t({ en: "Cadence", ru: "Каденс" })}</span>
+            <strong>{formatCadenceSpm(savedReport.cadenceSpm)}</strong>
+          </div>
+          <div className="metric">
+            <span className="metric-label">{t({ en: "Stopwatch pulse", ru: "Пульс по секундомеру" })}</span>
+            <strong>{savedReport.stopwatchPulseBpm ?? "-"}</strong>
+          </div>
+          <div className="metric">
+            <span className="metric-label">{t({ en: "HR zone", ru: "Зона пульса" })}</span>
+            <strong>{heartRateZoneShortLabel(savedReport.heartRateZone, language)}</strong>
+          </div>
         </section>
 
         <div className="action-grid">
@@ -280,6 +365,14 @@ export function SessionReportPage() {
     setSaveError("");
     const avgHrValue = optionalNumber(avgHr);
     const maxHrValue = optionalNumber(maxHr);
+    const distanceMetersValue = parseDistanceKmToMeters(distanceKm);
+    const avgPaceInputValue = parsePaceToSecPerKm(avgPace);
+    const avgSpeedInputValue = parseOptionalFloat(avgSpeed);
+    const avgPaceValue = avgPaceInputValue ?? deriveAvgPaceSecPerKm(distanceMetersValue, draft.totalDurationSec);
+    const avgSpeedValue = avgSpeedInputValue ?? deriveAvgSpeedKmh(distanceMetersValue, draft.totalDurationSec);
+    const cadenceSpmValue = parseOptionalInt(cadenceSpm);
+    const stopwatchPulseValue = parseOptionalInt(stopwatchPulseBpm);
+    const heartRateZoneValue = heartRateZone || null;
     const payload = {
       templateId: draft.template.id,
       date: draft.date,
@@ -289,8 +382,15 @@ export function SessionReportPage() {
       totalWalkSec: draft.totalWalkSec,
       avgHr: avgHrValue,
       maxHr: maxHrValue,
+      stopwatchPulseBpm: stopwatchPulseValue,
+      heartRateZone: heartRateZoneValue,
+      distanceMeters: distanceMetersValue,
+      avgPaceSecPerKm: avgPaceValue,
+      avgSpeedKmh: avgSpeedValue,
+      cadenceSpm: cadenceSpmValue,
       difficulty,
       breathing,
+      breathingNote: breathingNote.trim() || null,
       pain,
       notes: notes.trim() || null
     };
@@ -303,9 +403,16 @@ export function SessionReportPage() {
         completed: draft.completed,
         difficulty,
         breathing,
+        breathingNote: breathingNote.trim() || null,
         pain,
         avgHr: avgHrValue,
         maxHr: maxHrValue,
+        stopwatchPulseBpm: stopwatchPulseValue,
+        heartRateZone: heartRateZoneValue,
+        distanceMeters: distanceMetersValue,
+        avgPaceSecPerKm: avgPaceValue,
+        avgSpeedKmh: avgSpeedValue,
+        cadenceSpm: cadenceSpmValue,
         templateName: draft.template.name,
         templateLevel: draft.template.level
       });
@@ -367,9 +474,95 @@ export function SessionReportPage() {
         </label>
       </section>
 
+      <section className="form-section">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">{t({ en: "Running metrics", ru: "Беговые метрики" })}</div>
+            <h2>{t({ en: "Pace and mechanics", ru: "Темп и техника" })}</h2>
+          </div>
+        </div>
+        <div className="form-grid two-column">
+          <label>
+            <span className="field-label">{t({ en: "Distance, km", ru: "Дистанция, км" })}</span>
+            <input
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              type="number"
+              value={distanceKm}
+              onChange={(event) => setDistanceKm(event.target.value)}
+              placeholder={t({ en: "Optional", ru: "Необязательно" })}
+            />
+          </label>
+          <label>
+            <span className="field-label">{t({ en: "Avg pace", ru: "Средний темп" })}</span>
+            <input
+              inputMode="numeric"
+              type="text"
+              value={avgPace}
+              onChange={(event) => setAvgPace(event.target.value)}
+              placeholder="5:45"
+            />
+          </label>
+          <label>
+            <span className="field-label">{t({ en: "Speed, km/h", ru: "Скорость, км/ч" })}</span>
+            <input
+              inputMode="decimal"
+              min="0.1"
+              step="0.1"
+              type="number"
+              value={avgSpeed}
+              onChange={(event) => setAvgSpeed(event.target.value)}
+              placeholder={t({ en: "Optional", ru: "Необязательно" })}
+            />
+          </label>
+          <label>
+            <span className="field-label">{t({ en: "Cadence, spm", ru: "Каденс, шаг/мин" })}</span>
+            <input
+              inputMode="numeric"
+              min="50"
+              max="260"
+              type="number"
+              value={cadenceSpm}
+              onChange={(event) => setCadenceSpm(event.target.value)}
+              placeholder={t({ en: "Optional", ru: "Необязательно" })}
+            />
+          </label>
+        </div>
+      </section>
+
       <section className="form-section two-column">
         <label>
-          <span className="field-label">{t({ en: "Breathing", ru: "Дыхание" })}</span>
+          <span className="field-label">{t({ en: "Pulse by stopwatch", ru: "Пульс по секундомеру" })}</span>
+          <input
+            inputMode="numeric"
+            min="30"
+            max="260"
+            type="number"
+            value={stopwatchPulseBpm}
+            onChange={(event) => setStopwatchPulseBpm(event.target.value)}
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
+          />
+        </label>
+        <label>
+          <span className="field-label">{t({ en: "Heart-rate zone", ru: "Зона пульса" })}</span>
+          <select
+            value={heartRateZone}
+            onChange={(event) => setHeartRateZone(event.target.value as HeartRateZone | "")}
+          >
+            <option value="">{t({ en: "Not set", ru: "Не выбрана" })}</option>
+            {heartRateZoneValues.map((value) => (
+              <option key={value} value={value}>
+                {heartRateZoneLabel(value, language)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+
+      <section className="form-section two-column">
+        <label>
+          <span className="field-label">{t({ en: "Subjective breathing", ru: "Субъективное дыхание" })}</span>
           <select
             value={breathing}
             onChange={(event) => setBreathing(event.target.value as BreathingLevel)}
@@ -390,6 +583,18 @@ export function SessionReportPage() {
               </option>
             ))}
           </select>
+        </label>
+      </section>
+
+      <section className="form-section">
+        <label>
+          <span className="field-label">{t({ en: "Breathing details", ru: "Детали дыхания" })}</span>
+          <textarea
+            rows={3}
+            value={breathingNote}
+            onChange={(event) => setBreathingNote(event.target.value)}
+            placeholder={t({ en: "Optional", ru: "Необязательно" })}
+          />
         </label>
       </section>
 

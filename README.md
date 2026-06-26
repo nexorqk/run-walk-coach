@@ -166,3 +166,5 @@ See [docs/operations.md](docs/operations.md) for deployment order, backup/restor
 - Heart rate is manual in v1, with Coach guidance based on the easy HR range in Settings.
 - No GPS, Bluetooth HR, social features, payments, or AI features are included.
 - The app stores local sessions in IndexedDB so workouts can be saved offline and before Google login.
+- The rule-based strength training engine direction is documented in [docs/rule-based-training-engine.md](docs/rule-based-training-engine.md).
+- Selective frontend practices borrowed from `modern-stack` are documented in [docs/borrowed-modern-stack-practices.md](docs/borrowed-modern-stack-practices.md).

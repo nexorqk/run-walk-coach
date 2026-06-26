@@ -1,19 +1,31 @@
-import { breathingLevelValues, formatTime, type BreathingLevel } from "@run-walk-coach/shared";
+import { breathingLevelValues, formatTime, type BreathingLevel, type WorkoutSession } from "@run-walk-coach/shared";
 import {
   Activity,
+  Ban,
+  Bed,
   BookOpen,
   CalendarDays,
+  CheckCircle2,
+  Droplets,
   Footprints,
   Gauge,
   HeartPulse,
   Route,
   ShieldAlert,
   Sparkles,
+  ThermometerSun,
+  Timer,
   TrendingUp
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useState } from "react";
+import { getSessions } from "../api/client.js";
 import { db, type LocalWorkoutSession } from "../db/local-db.js";
 import { useAppStore } from "../store/app-store.js";
+import {
+  buildCoachInsights,
+  type CoachInsight,
+  type CoachInsightSession
+} from "../utils/coach-insights.js";
 import {
   breathingLabel,
   formatDateTime,
@@ -29,6 +41,16 @@ type PulseZone = {
   range: string;
   tone: "easy" | "steady" | "hard" | "alert";
   description: string;
+};
+
+type CoachCardTone = "default" | "good" | "amber" | "danger";
+
+type CoachCard = {
+  title: string;
+  body: string;
+  meta?: string;
+  icon: ReactElement;
+  tone?: CoachCardTone;
 };
 
 type GuideTableProps = {
@@ -169,6 +191,63 @@ function GuideList({ items }: { items: string[] }) {
   );
 }
 
+function CoachCardGrid({ cards }: { cards: CoachCard[] }) {
+  return (
+    <div className="coach-card-grid">
+      {cards.map((card) => (
+        <article className={`coach-card coach-card-${card.tone ?? "default"}`} key={card.title}>
+          <div className="coach-card-heading">
+            {card.icon}
+            <h3>{card.title}</h3>
+          </div>
+          <p>{card.body}</p>
+          {card.meta ? <span>{card.meta}</span> : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function localToCoachSession(session: LocalWorkoutSession): CoachInsightSession {
+  return {
+    date: session.date,
+    completed: session.completed,
+    totalDurationSec: session.totalDurationSec,
+    totalRunSec: session.totalRunSec,
+    avgHr: session.avgHr,
+    maxHr: session.maxHr,
+    stopwatchPulseBpm: session.stopwatchPulseBpm,
+    heartRateZone: session.heartRateZone,
+    distanceMeters: session.distanceMeters,
+    avgPaceSecPerKm: session.avgPaceSecPerKm,
+    avgSpeedKmh: session.avgSpeedKmh,
+    cadenceSpm: session.cadenceSpm,
+    difficulty: session.difficulty,
+    breathing: session.breathing,
+    pain: session.pain
+  };
+}
+
+function remoteToCoachSession(session: WorkoutSession): CoachInsightSession {
+  return {
+    date: session.date,
+    completed: session.completed,
+    totalDurationSec: session.totalDurationSec,
+    totalRunSec: session.totalRunSec,
+    avgHr: session.avgHr,
+    maxHr: session.maxHr,
+    stopwatchPulseBpm: session.stopwatchPulseBpm,
+    heartRateZone: session.heartRateZone,
+    distanceMeters: session.distanceMeters,
+    avgPaceSecPerKm: session.avgPaceSecPerKm,
+    avgSpeedKmh: session.avgSpeedKmh,
+    cadenceSpm: session.cadenceSpm,
+    difficulty: session.difficulty,
+    breathing: session.breathing,
+    pain: session.pain
+  };
+}
+
 function pulseZones(easyMin: number, easyMax: number, language: AppLanguage): PulseZone[] {
   return [
     {
@@ -260,7 +339,7 @@ function currentPulseAdvice(
   });
 }
 
-function latestSessionCue(session: LocalWorkoutSession | undefined, language: AppLanguage) {
+function latestSessionCue(session: CoachInsightSession | undefined, language: AppLanguage) {
   if (!session) {
     return text(language, {
       en: "Complete a workout report to unlock feedback from your own sessions.",
@@ -302,12 +381,115 @@ function latestSessionCue(session: LocalWorkoutSession | undefined, language: Ap
   });
 }
 
+function insightCard(insight: CoachInsight, language: AppLanguage): CoachCard {
+  const copy: Record<CoachInsight["code"], { title: Record<AppLanguage, string>; body: Record<AppLanguage, string>; meta?: Record<AppLanguage, string> }> = {
+    "no-data": {
+      title: { en: "Save a few reports", ru: "Сохрани несколько отчётов" },
+      body: {
+        en: "Coach insights need workout reports with pulse, pace, cadence, breathing and pain.",
+        ru: "Для coach insights нужны отчёты с пульсом, темпом, каденсом, дыханием и болью."
+      }
+    },
+    pain: {
+      title: { en: "Pain is the limiter", ru: "Боль сейчас главный лимит" },
+      body: {
+        en: "Do not progress load until the same pain is gone and stride feels normal.",
+        ru: "Не увеличивай нагрузку, пока эта боль не ушла и шаг не стал нормальным."
+      }
+    },
+    "hard-load": {
+      title: { en: "Load felt too hard", ru: "Нагрузка была тяжёлой" },
+      body: {
+        en: "Difficulty or breathing says the last session was closer to hard work than base building.",
+        ru: "Сложность или дыхание говорят, что последняя тренировка была ближе к тяжёлой, чем к базовой."
+      }
+    },
+    "hr-high": {
+      title: { en: "Pulse drifted high", ru: "Пульс ушёл высоко" },
+      body: {
+        en: "Repeat the level, start slower, and extend walk breaks before adding volume.",
+        ru: "Повтори уровень, начни медленнее и продли шаговые паузы перед увеличением объёма."
+      }
+    },
+    "efficiency-up": {
+      title: { en: "Efficiency is improving", ru: "Экономичность растёт" },
+      body: {
+        en: "Recent pace improved without a higher pulse. This is the signal you want.",
+        ru: "Последний темп улучшился без роста пульса. Это именно тот сигнал, который нужен."
+      }
+    },
+    "efficiency-drift": {
+      title: { en: "Pace costs more pulse", ru: "Темп стоит дороже по пульсу" },
+      body: {
+        en: "The same or faster pace now needs a higher pulse. Keep the next run easier.",
+        ru: "Тот же или более быстрый темп теперь требует более высокого пульса. Следующий бег сделай легче."
+      }
+    },
+    "cadence-low": {
+      title: { en: "Cadence is low", ru: "Каденс низковат" },
+      body: {
+        en: "Try a slightly shorter, quicker step. Do not force a long stride.",
+        ru: "Попробуй чуть короче и чаще шаг. Не растягивай шаг специально."
+      }
+    },
+    "cadence-good": {
+      title: { en: "Cadence looks useful", ru: "Каденс выглядит полезно" },
+      body: {
+        en: "This step rate can reduce braking and keep the run smoother.",
+        ru: "Такая частота шага помогает меньше тормозить и бежать мягче."
+      }
+    },
+    "distance-consistency": {
+      title: { en: "Consistency is forming", ru: "Появляется регулярность" },
+      body: {
+        en: "You have several distance-tracked sessions in the last two weeks.",
+        ru: "За последние две недели есть несколько тренировок с дистанцией."
+      }
+    }
+  };
+  const iconByCode: Record<CoachInsight["code"], ReactElement> = {
+    "no-data": <BookOpen aria-hidden="true" size={22} />,
+    pain: <ShieldAlert aria-hidden="true" size={22} />,
+    "hard-load": <Gauge aria-hidden="true" size={22} />,
+    "hr-high": <HeartPulse aria-hidden="true" size={22} />,
+    "efficiency-up": <TrendingUp aria-hidden="true" size={22} />,
+    "efficiency-drift": <ThermometerSun aria-hidden="true" size={22} />,
+    "cadence-low": <Footprints aria-hidden="true" size={22} />,
+    "cadence-good": <Footprints aria-hidden="true" size={22} />,
+    "distance-consistency": <Route aria-hidden="true" size={22} />
+  };
+  const toneBySeverity: Record<CoachInsight["severity"], CoachCardTone> = {
+    good: "good",
+    info: "default",
+    caution: "amber",
+    danger: "danger"
+  };
+  const meta =
+    insight.value === undefined
+      ? undefined
+      : insight.code === "efficiency-up"
+        ? text(language, { en: `${insight.value} sec/km faster`, ru: `быстрее на ${insight.value} сек/км` })
+        : insight.code === "efficiency-drift"
+          ? text(language, { en: `+${insight.value} bpm`, ru: `+${insight.value} уд/мин` })
+          : insight.code === "distance-consistency"
+            ? text(language, { en: `${insight.value} km in 14 days`, ru: `${insight.value} км за 14 дней` })
+            : String(insight.value);
+
+  return {
+    title: text(language, copy[insight.code].title),
+    body: text(language, copy[insight.code].body),
+    meta,
+    icon: iconByCode[insight.code],
+    tone: toneBySeverity[insight.severity]
+  };
+}
+
 export function CoachPage() {
   const profile = useAppStore((state) => state.profile);
   const recommendation = useAppStore((state) => state.recommendation);
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const { language, t } = useLanguage();
-  const [latestSession, setLatestSession] = useState<LocalWorkoutSession>();
+  const [coachSessions, setCoachSessions] = useState<CoachInsightSession[]>([]);
   const [heartRateInput, setHeartRateInput] = useState("");
   const [breathing, setBreathing] = useState<BreathingLevel>("MEDIUM");
   const easyMin = profile?.easyHrMin ?? 130;
@@ -316,14 +498,197 @@ export function CoachPage() {
   const practicalHrRange = easyMin <= practicalHrMax ? `${easyMin}-${practicalHrMax}` : `${easyMin}-${easyMax}`;
   const currentHeartRate = heartRateInput.trim() === "" ? undefined : Number(heartRateInput);
   const zones = useMemo(() => pulseZones(easyMin, easyMax, language), [easyMin, easyMax, language]);
+  const latestSession = coachSessions[0];
+  const smartInsightCards = useMemo(
+    () => buildCoachInsights({ easyHrMax: easyMax, sessions: coachSessions }).map((insight) => insightCard(insight, language)),
+    [coachSessions, easyMax, language]
+  );
+  const todayCards: CoachCard[] = [
+    {
+      title: t({ en: "Warm up first", ru: "Сначала разминка" }),
+      body: t({
+        en: "Walk briskly for 8-10 minutes. Start running only when breathing feels calm and legs are loose.",
+        ru: "Иди быстрым шагом 8-10 минут. Начинай бег только когда дыхание спокойное, а ноги включились."
+      }),
+      meta: t({ en: "No rush in the first minutes", ru: "Первые минуты без спешки" }),
+      icon: <Footprints aria-hidden="true" size={22} />,
+      tone: "good"
+    },
+    {
+      title: recommendation
+        ? localizeTemplateName(recommendation.template.name, language)
+        : t({ en: "Main set", ru: "Основная часть" }),
+      body: recommendation
+        ? `${formatTime(recommendation.template.runSec)} ${t({ en: "run", ru: "бег" })} / ${formatTime(recommendation.template.walkSec)} ${t({ en: "walk", ru: "шаг" })}, ${recommendation.template.repeats}x.`
+        : t({
+            en: "Use the current run-walk plan and keep every run segment repeatable.",
+            ru: "Используй текущий план бег-шаг и держи каждый беговой отрезок повторяемым."
+          }),
+      meta: `${t({ en: "Target HR", ru: "Целевой пульс" })}: ${easyMin}-${easyMax}`,
+      icon: <Route aria-hidden="true" size={22} />
+    },
+    {
+      title: t({ en: "Control rule", ru: "Правило контроля" }),
+      body: t({
+        en: "If pulse climbs above the easy ceiling or speech breaks down, switch to walking before the workout turns hard.",
+        ru: "Если пульс выше лёгкого потолка или речь разваливается, переходи на шаг до того, как тренировка станет тяжёлой."
+      }),
+      meta: `HR > ${easyMax}: ${t({ en: "walk earlier", ru: "раньше переходи на шаг" })}`,
+      icon: <HeartPulse aria-hidden="true" size={22} />,
+      tone: "amber"
+    },
+    {
+      title: t({ en: "After the workout", ru: "После тренировки" }),
+      body: t({
+        en: "Save distance, pace, pulse, cadence, breathing, pain and notes. The next recommendation depends on this report.",
+        ru: "Сохрани дистанцию, темп, пульс, каденс, дыхание, боль и заметки. От этого зависит следующая рекомендация."
+      }),
+      icon: <CheckCircle2 aria-hidden="true" size={22} />,
+      tone: "good"
+    }
+  ];
+  const highPulseCards: CoachCard[] = [
+    {
+      title: t({ en: "Start was too fast", ru: "Слишком быстрый старт" }),
+      body: t({
+        en: "The first run segment often decides the whole workout. Start slower than you think you need.",
+        ru: "Первый беговой отрезок часто решает всю тренировку. Начинай медленнее, чем кажется нужным."
+      }),
+      icon: <Gauge aria-hidden="true" size={22} />
+    },
+    {
+      title: t({ en: "Walk breaks are not restoring", ru: "Шаг не восстанавливает" }),
+      body: t({
+        en: "If the next run starts at a high pulse, extend walking until breathing is controlled again.",
+        ru: "Если следующий бег начинается на высоком пульсе, продли шаг до управляемого дыхания."
+      }),
+      icon: <Timer aria-hidden="true" size={22} />
+    },
+    {
+      title: t({ en: "Heat, sleep, stress", ru: "Жара, сон, стресс" }),
+      body: t({
+        en: "Poor sleep, heat, dehydration, caffeine and stress can push heart rate up at the same pace.",
+        ru: "Недосып, жара, обезвоживание, кофеин и стресс могут поднимать пульс на том же темпе."
+      }),
+      icon: <ThermometerSun aria-hidden="true" size={22} />,
+      tone: "amber"
+    },
+    {
+      title: t({ en: "Aerobic base is lagging", ru: "Кардио-база отстаёт" }),
+      body: t({
+        en: "If easy running quickly becomes 160-170 bpm, use run-walk. This is the training target, not a failure.",
+        ru: "Если лёгкий бег быстро становится 160-170, используй бег-шаг. Это цель тренировки, а не провал."
+      }),
+      icon: <TrendingUp aria-hidden="true" size={22} />
+    }
+  ];
+  const stopwatchCards: CoachCard[] = [
+    {
+      title: t({ en: "Find the pulse", ru: "Найди пульс" }),
+      body: t({
+        en: "Use two fingers on the wrist. Do not use the thumb because it has its own pulse.",
+        ru: "Двумя пальцами на запястье. Большой палец не используй: у него есть собственный пульс."
+      }),
+      icon: <HeartPulse aria-hidden="true" size={22} />
+    },
+    {
+      title: t({ en: "Count 15 seconds", ru: "Считай 15 секунд" }),
+      body: t({
+        en: "Count beats for 15 seconds and multiply by 4. Example: 36 beats = 144 bpm.",
+        ru: "Считай удары 15 секунд и умножай на 4. Пример: 36 ударов = 144 уд/мин."
+      }),
+      meta: t({ en: "30 seconds x2 if rhythm is uneven", ru: "30 секунд x2, если ритм неровный" }),
+      icon: <Timer aria-hidden="true" size={22} />,
+      tone: "good"
+    },
+    {
+      title: t({ en: "Measure immediately", ru: "Меряй сразу" }),
+      body: t({
+        en: "Measure right after a run segment or at the end. Pulse drops quickly once you walk.",
+        ru: "Меряй сразу после бегового отрезка или в конце. На шаге пульс быстро падает."
+      }),
+      icon: <Activity aria-hidden="true" size={22} />
+    },
+    {
+      title: t({ en: "Save it in report", ru: "Сохрани в отчёт" }),
+      body: t({
+        en: "Use the “Pulse by stopwatch” field so History and Stats can keep this signal.",
+        ru: "Запиши в поле “Пульс по секундомеру”, чтобы History и Stats учитывали этот сигнал."
+      }),
+      icon: <BookOpen aria-hidden="true" size={22} />
+    }
+  ];
+  const doNotRunCards: CoachCard[] = [
+    {
+      title: t({ en: "Red-flag symptoms", ru: "Красные флаги" }),
+      body: t({
+        en: "Do not run with chest pain, severe shortness of breath, faintness, dizziness, or near-fainting.",
+        ru: "Не беги при боли в груди, сильной одышке, предобморочном состоянии, головокружении или ощущении, что сейчас потеряешь сознание."
+      }),
+      meta: t({ en: "Stop and seek medical help if this appears", ru: "Остановись и обратись за медпомощью, если это появилось" }),
+      icon: <ShieldAlert aria-hidden="true" size={22} />,
+      tone: "danger"
+    },
+    {
+      title: t({ en: "Fever or flu-like illness", ru: "Температура или гриппоподобное состояние" }),
+      body: t({
+        en: "If you feel systemically ill, replace training with rest. Resume with an easy walk first.",
+        ru: "Если болеешь системно, замени тренировку отдыхом. Возвращайся сначала через лёгкую прогулку."
+      }),
+      icon: <Bed aria-hidden="true" size={22} />,
+      tone: "amber"
+    },
+    {
+      title: t({ en: "Heat stress", ru: "Перегрев" }),
+      body: t({
+        en: "Heavy sweating with dizziness, nausea, cramps or a racing pulse is a reason to stop and cool down.",
+        ru: "Сильное потоотделение с головокружением, тошнотой, судорогами или частым пульсом — причина остановиться и охладиться."
+      }),
+      icon: <Droplets aria-hidden="true" size={22} />,
+      tone: "amber"
+    },
+    {
+      title: t({ en: "Pain changes your stride", ru: "Боль меняет шаг" }),
+      body: t({
+        en: "Sharp or local pain in the shin, knee, Achilles, foot or hip means walking or rest, not pushing through.",
+        ru: "Острая или локальная боль в голени, колене, ахилле, стопе или тазу — это шаг или отдых, а не терпеть дальше."
+      }),
+      icon: <Ban aria-hidden="true" size={22} />,
+      tone: "danger"
+    }
+  ];
 
   useEffect(() => {
-    void db.sessions
-      .orderBy("date")
-      .reverse()
-      .first()
-      .then(setLatestSession);
-  }, []);
+    let ignore = false;
+
+    async function loadCoachSessions() {
+      try {
+        if (serverSyncEnabled) {
+          const remoteSessions = await getSessions();
+          if (!ignore) {
+            setCoachSessions(remoteSessions.map(remoteToCoachSession));
+          }
+          return;
+        }
+
+        const localSessions = await db.sessions.orderBy("date").reverse().toArray();
+        if (!ignore) {
+          setCoachSessions(localSessions.map(localToCoachSession));
+        }
+      } catch {
+        const localSessions = await db.sessions.orderBy("date").reverse().toArray();
+        if (!ignore) {
+          setCoachSessions(localSessions.map(localToCoachSession));
+        }
+      }
+    }
+
+    void loadCoachSessions();
+
+    return () => {
+      ignore = true;
+    };
+  }, [serverSyncEnabled]);
 
   return (
     <div className="stack">
@@ -346,6 +711,36 @@ export function CoachPage() {
             {serverSyncEnabled ? t({ en: "Google sync on", ru: "Google sync включён" }) : t({ en: "Local only", ru: "Только локально" })}
           </span>
         </div>
+      </section>
+
+      <section className="coach-band" aria-labelledby="coach-today-title">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">{t({ en: "Today", ru: "Сегодня" })}</div>
+            <h2 id="coach-today-title">{t({ en: "What to do today", ru: "Что делать сегодня" })}</h2>
+          </div>
+          <p className="muted">
+            {localizeProgressionReason(recommendation?.reason, language) ??
+              t({ en: "Keep the workout easy and repeatable.", ru: "Держи тренировку лёгкой и повторяемой." })}
+          </p>
+        </div>
+        <CoachCardGrid cards={todayCards} />
+      </section>
+
+      <section className="coach-band" aria-labelledby="coach-smart-title">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">{t({ en: "Smart Coach", ru: "Умный Coach" })}</div>
+            <h2 id="coach-smart-title">{t({ en: "What your data says", ru: "Что говорят твои данные" })}</h2>
+          </div>
+          <p className="muted">
+            {t({
+              en: "Insights use recent reports: pace, pulse, cadence, breathing, pain and distance.",
+              ru: "Выводы используют последние отчёты: темп, пульс, каденс, дыхание, боль и дистанцию."
+            })}
+          </p>
+        </div>
+        <CoachCardGrid cards={smartInsightCards} />
       </section>
 
       <section className="form-section">
@@ -385,22 +780,52 @@ export function CoachPage() {
         </div>
       </section>
 
-      <section className="form-section">
+      <section className="coach-band" aria-labelledby="coach-high-pulse-title">
         <div className="section-heading">
-          <h2>{t({ en: "Today focus", ru: "Фокус на сегодня" })}</h2>
-          <p className="muted">{recommendation ? localizeTemplateName(recommendation.template.name, language) : t({ en: "Current workout", ru: "Текущая тренировка" })}</p>
-        </div>
-        <div className="coach-callout">
-          <TrendingUp aria-hidden="true" size={24} />
-          <p>{localizeProgressionReason(recommendation?.reason, language) ?? t({ en: "Stay easy and keep the run segments repeatable.", ru: "Держи лёгкое усилие и повторяемые беговые отрезки." })}</p>
-        </div>
-        {recommendation ? (
+          <div>
+            <div className="eyebrow">{t({ en: "Heart rate", ru: "Пульс" })}</div>
+            <h2 id="coach-high-pulse-title">{t({ en: "Why pulse gets high", ru: "Почему пульс высокий" })}</h2>
+          </div>
           <p className="muted">
-            {t({ en: "Target", ru: "Цель" })}: {formatTime(recommendation.template.runSec)} {t({ en: "run", ru: "бег" })} /{" "}
-            {formatTime(recommendation.template.walkSec)} {t({ en: "walk", ru: "шаг" })}. {t({ en: "If pulse rises above", ru: "Если пульс поднимается выше" })} {easyMax},
-            {t({ en: "shorten the run or make the walk slower.", ru: "сократи бег или сделай шаг медленнее." })}
+            {t({
+              en: "If the same pace suddenly feels harder, look at context before blaming fitness.",
+              ru: "Если тот же темп внезапно стал тяжелее, сначала проверь контекст, а не только форму."
+            })}
           </p>
-        ) : null}
+        </div>
+        <CoachCardGrid cards={highPulseCards} />
+      </section>
+
+      <section className="coach-band" aria-labelledby="coach-stopwatch-title">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">{t({ en: "No watch", ru: "Без часов" })}</div>
+            <h2 id="coach-stopwatch-title">{t({ en: "How to measure pulse", ru: "Как измерить пульс без часов" })}</h2>
+          </div>
+          <p className="muted">
+            {t({
+              en: "A manual check is not perfect, but it is good enough to decide whether to walk or continue.",
+              ru: "Ручной замер не идеален, но его достаточно, чтобы решить: идти шагом или продолжать."
+            })}
+          </p>
+        </div>
+        <CoachCardGrid cards={stopwatchCards} />
+      </section>
+
+      <section className="coach-band" aria-labelledby="coach-no-run-title">
+        <div className="section-heading">
+          <div>
+            <div className="eyebrow">{t({ en: "Safety", ru: "Безопасность" })}</div>
+            <h2 id="coach-no-run-title">{t({ en: "When not to run", ru: "Когда не бежать" })}</h2>
+          </div>
+          <p className="muted">
+            {t({
+              en: "The useful training choice is sometimes walking, rest, or medical help.",
+              ru: "Иногда лучший тренировочный выбор — ходьба, отдых или медицинская помощь."
+            })}
+          </p>
+        </div>
+        <CoachCardGrid cards={doNotRunCards} />
       </section>
 
       <section className="form-section">
@@ -528,7 +953,7 @@ export function CoachPage() {
           </p>
         </div>
 
-        <details className="guide-details" open>
+        <details className="guide-details">
           <summary>Первые 4 недели</summary>
           <div className="guide-details-body">
             <p>

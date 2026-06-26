@@ -1,5 +1,6 @@
 import {
   BreathingLevelSchema,
+  HeartRateZoneSchema,
   PainTypeSchema,
   UserProfileSchema,
   WorkoutTemplateSchema
@@ -10,6 +11,7 @@ import type { LocalWorkoutSession, SyncStatus } from "../db/local-db.js";
 const SyncStatusSchema = z.enum(["local", "pending", "synced", "failed"]);
 const AppLanguageSchema = z.enum(["en", "ru"]);
 const AppThemeSchema = z.enum(["light", "dark", "system"]);
+const ReadinessIllnessSchema = z.enum(["none", "above_neck", "below_neck", "fever"]);
 
 export const ImportedSessionSchema = z.object({
   localId: z.string().min(1).optional(),
@@ -27,8 +29,15 @@ export const ImportedSessionSchema = z.object({
   totalWalkSec: z.number().int().min(0),
   avgHr: z.number().int().min(30).max(240).nullable().optional(),
   maxHr: z.number().int().min(30).max(260).nullable().optional(),
+  stopwatchPulseBpm: z.number().int().min(30).max(260).nullable().optional(),
+  heartRateZone: HeartRateZoneSchema.nullable().optional(),
+  distanceMeters: z.number().int().min(0).max(1000000).nullable().optional(),
+  avgPaceSecPerKm: z.number().int().min(60).max(3600).nullable().optional(),
+  avgSpeedKmh: z.number().min(0.1).max(80).nullable().optional(),
+  cadenceSpm: z.number().int().min(50).max(260).nullable().optional(),
   difficulty: z.number().int().min(1).max(10),
   breathing: BreathingLevelSchema,
+  breathingNote: z.string().nullable().optional(),
   pain: PainTypeSchema,
   notes: z.string().nullable().optional(),
   createdAt: z.string().optional(),
@@ -47,7 +56,20 @@ export const BrowserDataImportSchema = z.object({
       language: AppLanguageSchema.optional(),
       theme: AppThemeSchema.optional(),
       weeklyPlanCompletion: z.record(z.boolean()).optional(),
-      weeklyRunTarget: z.union([z.literal(2), z.literal(3)]).optional()
+      weeklyRunTarget: z.union([z.literal(2), z.literal(3)]).optional(),
+      readinessChecks: z
+        .record(
+          z.object({
+            sleepQuality: z.number().int().min(1).max(5),
+            fatigue: z.number().int().min(1).max(5),
+            stress: z.number().int().min(1).max(5),
+            soreness: z.number().int().min(1).max(5),
+            pain: PainTypeSchema,
+            illness: ReadinessIllnessSchema,
+            redFlags: z.boolean()
+          })
+        )
+        .optional()
     })
     .optional()
 });
@@ -91,8 +113,15 @@ export function normalizeImportedSession(
     totalWalkSec: session.totalWalkSec,
     avgHr: session.avgHr ?? null,
     maxHr: session.maxHr ?? null,
+    stopwatchPulseBpm: session.stopwatchPulseBpm ?? null,
+    heartRateZone: session.heartRateZone ?? null,
+    distanceMeters: session.distanceMeters ?? null,
+    avgPaceSecPerKm: session.avgPaceSecPerKm ?? null,
+    avgSpeedKmh: session.avgSpeedKmh ?? null,
+    cadenceSpm: session.cadenceSpm ?? null,
     difficulty: session.difficulty,
     breathing: session.breathing,
+    breathingNote: session.breathingNote ?? null,
     pain: session.pain,
     notes: session.notes ?? null,
     createdAt: session.createdAt ?? now,
