@@ -6,7 +6,7 @@ import { reportClientError } from "./api/client.js";
 import { applyLanguage, getStoredLanguage } from "./utils/language.js";
 import { isIosBrowserMode, isIosDevice, isStandaloneDisplayMode } from "./utils/platform.js";
 import { applyTheme, getStoredTheme, watchSystemTheme } from "./utils/theme.js";
-import "./styles.css";
+import "./app.css";
 
 applyLanguage(getStoredLanguage());
 applyTheme(getStoredTheme());

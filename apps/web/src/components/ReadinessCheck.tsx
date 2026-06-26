@@ -12,7 +12,14 @@ import {
 } from "../utils/readiness.js";
 import { READINESS_CHECK_KEY } from "../utils/storage-keys.js";
 import { dateKey } from "../utils/weekly-plan.js";
-import { SelectField } from "./SelectField.js";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "./ui/select.js";
+import { Slider } from "./ui/slider.js";
 
 type ReadinessCheckProps = {
   onStartWorkout: () => void;
@@ -156,64 +163,76 @@ export function ReadinessCheck({ onStartWorkout }: ReadinessCheckProps) {
       <div className="readiness-grid">
         <label>
           <span className="field-label">{t({ en: "Sleep quality", ru: "Качество сна" })}: {sliderLabel(check.sleepQuality, language)}</span>
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={check.sleepQuality}
-            onChange={(event) => updateCheck({ sleepQuality: Number(event.target.value) })}
+          <Slider
+            min={1}
+            max={5}
+            step={1}
+            value={[check.sleepQuality]}
+            onValueChange={([v]) => updateCheck({ sleepQuality: v })}
           />
         </label>
         <label>
           <span className="field-label">{t({ en: "Fatigue", ru: "Усталость" })}: {sliderLabel(check.fatigue, language)}</span>
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={check.fatigue}
-            onChange={(event) => updateCheck({ fatigue: Number(event.target.value) })}
+          <Slider
+            min={1}
+            max={5}
+            step={1}
+            value={[check.fatigue]}
+            onValueChange={([v]) => updateCheck({ fatigue: v })}
           />
         </label>
         <label>
           <span className="field-label">{t({ en: "Stress", ru: "Стресс" })}: {sliderLabel(check.stress, language)}</span>
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={check.stress}
-            onChange={(event) => updateCheck({ stress: Number(event.target.value) })}
+          <Slider
+            min={1}
+            max={5}
+            step={1}
+            value={[check.stress]}
+            onValueChange={([v]) => updateCheck({ stress: v })}
           />
         </label>
         <label>
           <span className="field-label">{t({ en: "Leg soreness", ru: "Забитость ног" })}: {sliderLabel(check.soreness, language)}</span>
-          <input
-            type="range"
-            min="1"
-            max="5"
-            value={check.soreness}
-            onChange={(event) => updateCheck({ soreness: Number(event.target.value) })}
+          <Slider
+            min={1}
+            max={5}
+            step={1}
+            value={[check.soreness]}
+            onValueChange={([v]) => updateCheck({ soreness: v })}
           />
         </label>
       </div>
 
       <div className="form-grid two-column">
-        <SelectField
-          label={t({ en: "Pain", ru: "Боль" })}
-          value={check.pain}
-          options={painTypeValues.map((v) => ({ value: v, label: painLabel(v, language) }))}
-          onChange={(value) => updateCheck({ pain: value as PainType })}
-        />
-        <SelectField
-          label={t({ en: "Illness", ru: "Самочувствие" })}
-          value={check.illness}
-          options={[
-            { value: "none", label: t({ en: "No illness", ru: "Не болею" }) },
-            { value: "above_neck", label: t({ en: "Mild above-neck symptoms", ru: "Лёгкие симптомы выше шеи" }) },
-            { value: "below_neck", label: t({ en: "Below-neck symptoms", ru: "Симптомы ниже шеи" }) },
-            { value: "fever", label: t({ en: "Fever / body aches", ru: "Температура / ломота" }) }
-          ]}
-          onChange={(value) => updateCheck({ illness: value as ReadinessIllness })}
-        />
+        <div>
+          <span className="field-label">{t({ en: "Pain", ru: "Боль" })}</span>
+          <Select value={check.pain} onValueChange={(v) => updateCheck({ pain: v as PainType })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {painTypeValues.map((v) => (
+                <SelectItem key={v} value={v}>
+                  {painLabel(v, language)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <span className="field-label">{t({ en: "Illness", ru: "Самочувствие" })}</span>
+          <Select value={check.illness} onValueChange={(v) => updateCheck({ illness: v as ReadinessIllness })}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t({ en: "No illness", ru: "Не болею" })}</SelectItem>
+              <SelectItem value="above_neck">{t({ en: "Mild above-neck symptoms", ru: "Лёгкие симптомы выше шеи" })}</SelectItem>
+              <SelectItem value="below_neck">{t({ en: "Below-neck symptoms", ru: "Симптомы ниже шеи" })}</SelectItem>
+              <SelectItem value="fever">{t({ en: "Fever / body aches", ru: "Температура / ломота" })}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <label className="checkbox-row">
