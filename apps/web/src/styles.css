@@ -2074,6 +2074,62 @@ a:focus-visible {
   text-transform: uppercase;
 }
 
+.landing-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  background: color-mix(in srgb, var(--landing-bg) 92%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.landing-topbar-brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--landing-white);
+  letter-spacing: -0.01em;
+}
+
+.landing-lang-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9999px;
+  background: var(--landing-surface);
+}
+
+.landing-lang-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--landing-graphite);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.landing-lang-btn:hover {
+  color: var(--landing-ash);
+}
+
+.landing-lang-btn.active {
+  background: var(--landing-red);
+  color: var(--landing-white);
+}
+
 .landing-reveal {
   opacity: 0;
   transform: translateY(32px);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useLanguage } from "../utils/language.js";
+import { type AppLanguage, useLanguage } from "../utils/language.js";
 import { getOnboardingComplete } from "../utils/onboarding.js";
 
 const REDUCED_MOTION =
@@ -17,10 +17,7 @@ function useScrollReveal(threshold = 0.15) {
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.unobserve(el);
-        }
+        setVisible(entry.isIntersecting);
       },
       { threshold }
     );
@@ -30,18 +27,6 @@ function useScrollReveal(threshold = 0.15) {
   }, [threshold]);
 
   return { ref, visible };
-}
-
-function useMountReveal(delay = 0) {
-  const [visible, setVisible] = useState(REDUCED_MOTION);
-
-  useEffect(() => {
-    if (REDUCED_MOTION) return;
-    const timer = window.setTimeout(() => setVisible(true), 50 + delay);
-    return () => window.clearTimeout(timer);
-  }, [delay]);
-
-  return visible;
 }
 
 function RevealBlock({ children, className = "", delay = 0 }: {
@@ -64,25 +49,46 @@ function RevealBlock({ children, className = "", delay = 0 }: {
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const hasOnboarded = getOnboardingComplete();
-  const heroVisible = useMountReveal();
 
-  const heroReveal = `landing-reveal ${heroVisible ? "landing-reveal-visible" : ""}`;
+  const switchLang = (lang: AppLanguage) => {
+    setLanguage(lang);
+  };
 
   return (
     <div className="landing">
+      <nav className="landing-topbar">
+        <span className="landing-topbar-brand">RunWalk Coach</span>
+        <div className="landing-lang-switch" role="group" aria-label="Language">
+          <button
+            className={`landing-lang-btn${language === "en" ? " active" : ""}`}
+            type="button"
+            onClick={() => switchLang("en")}
+          >
+            EN
+          </button>
+          <button
+            className={`landing-lang-btn${language === "ru" ? " active" : ""}`}
+            type="button"
+            onClick={() => switchLang("ru")}
+          >
+            RU
+          </button>
+        </div>
+      </nav>
+
       <section className="landing-hero">
-        <h1 className={`landing-display ${heroReveal} landing-hero-anim`}>
+        <h1 className="landing-display landing-reveal landing-reveal-visible landing-hero-anim">
           {t({ en: "RUN. WALK. REPEAT.", ru: "БЕГИ. ИДИ. ПОВТОРИ." })}
         </h1>
-        <p className={`landing-hero-sub ${heroReveal} landing-hero-anim`}>
+        <p className="landing-hero-sub landing-reveal landing-reveal-visible landing-hero-anim">
           {t({
             en: "A personal running assistant that builds your aerobic base with smart run-walk progression, heart rate guidance, and breathing feedback.",
             ru: "Персональный беговой помощник, который строит аэробную базу с умной прогрессией бег-шаг, контролем пульса и дыхания."
           })}
         </p>
-        <div className={`landing-hero-actions ${heroReveal} landing-hero-anim`}>
+        <div className="landing-hero-actions landing-reveal landing-reveal-visible landing-hero-anim">
           <button
             className="landing-cta-btn"
             type="button"
