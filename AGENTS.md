@@ -206,12 +206,12 @@ cp -r apps/web/dist/* /var/www/run-walk-coach/
 
 ### Deploy After Every Feature
 
-Always redeploy the web app after completing a feature or fix. The workflow is:
+Always redeploy the web app after completing a feature or fix — no matter how small. The workflow is:
 1. Run `pnpm lint` and `pnpm test`
 2. Run the 3-line deploy commands above
 3. Verify with `curl -sI https://run.storycraftbooks.com/ | head -5`
 
-Do not batch multiple features into one deploy. Each feature gets its own deploy.
+Do not batch multiple features into one deploy. Each feature gets its own deploy. Even a one-line bugfix gets deployed immediately.
 
 ## Testing
 
