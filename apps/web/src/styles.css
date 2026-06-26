@@ -1269,7 +1269,7 @@ h2 {
   font-size: 1.06rem;
   font-weight: 900;
   transition: transform 80ms ease, box-shadow 80ms ease;
-  box-shadow: 0 0 0 0 transparent;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .control-button:active {
