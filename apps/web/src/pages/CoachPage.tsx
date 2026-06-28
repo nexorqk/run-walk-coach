@@ -156,6 +156,24 @@ const afterWorkoutChecks = [
   "Какое восстановление через 10 минут."
 ];
 
+type CollapsibleSectionProps = {
+  summary: ReactElement | string;
+  children: ReactElement | ReactElement[];
+};
+
+function CollapsibleSection({ summary, children }: CollapsibleSectionProps) {
+  return (
+    <details className="collapsible-section" open>
+      <summary>
+        {typeof summary === "string" ? <h2>{summary}</h2> : summary}
+      </summary>
+      <div className="collapsible-body">
+        {children}
+      </div>
+    </details>
+  );
+}
+
 function GuideTable({ headers, rows }: GuideTableProps) {
   return (
     <div className="guide-table-wrap">
@@ -713,245 +731,291 @@ export function CoachPage() {
         </div>
       </section>
 
-      <section className="coach-band" aria-labelledby="coach-today-title">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">{t({ en: "Today", ru: "Сегодня" })}</div>
-            <h2 id="coach-today-title">{t({ en: "What to do today", ru: "Что делать сегодня" })}</h2>
-          </div>
+      <section className="coach-band">
+        <CollapsibleSection
+          summary={
+            <>
+              <div className="eyebrow">{t({ en: "Today", ru: "Сегодня" })}</div>
+              <h2>{t({ en: "What to do today", ru: "Что делать сегодня" })}</h2>
+            </>
+          }
+        >
           <p className="muted">
             {localizeProgressionReason(recommendation?.reason, language) ??
               t({ en: "Keep the workout easy and repeatable.", ru: "Держи тренировку лёгкой и повторяемой." })}
           </p>
-        </div>
-        <CoachCardGrid cards={todayCards} />
+          <CoachCardGrid cards={todayCards} />
+        </CollapsibleSection>
       </section>
 
-      <section className="coach-band" aria-labelledby="coach-smart-title">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">{t({ en: "Smart Coach", ru: "Умный Coach" })}</div>
-            <h2 id="coach-smart-title">{t({ en: "What your data says", ru: "Что говорят твои данные" })}</h2>
-          </div>
+      <section className="coach-band">
+        <CollapsibleSection
+          summary={
+            <>
+              <div className="eyebrow">{t({ en: "Smart Coach", ru: "Умный Coach" })}</div>
+              <h2>{t({ en: "What your data says", ru: "Что говорят твои данные" })}</h2>
+            </>
+          }
+        >
           <p className="muted">
             {t({
               en: "Insights use recent reports: pace, pulse, cadence, breathing, pain and distance.",
               ru: "Выводы используют последние отчёты: темп, пульс, каденс, дыхание, боль и дистанцию."
             })}
           </p>
-        </div>
-        <CoachCardGrid cards={smartInsightCards} />
+          <CoachCardGrid cards={smartInsightCards} />
+        </CollapsibleSection>
       </section>
 
       <section className="form-section">
-        <div className="section-heading">
-          <h2>{t({ en: "Live pacing cue", ru: "Подсказка по темпу" })}</h2>
-          <p className="muted">{t({ en: "Use this during a workout or right after a run segment.", ru: "Используй во время тренировки или сразу после бегового отрезка." })}</p>
-        </div>
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>{t({ en: "Live pacing cue", ru: "Подсказка по темпу" })}</h2>
+              <p className="muted">{t({ en: "Use this during a workout or right after a run segment.", ru: "Используй во время тренировки или сразу после бегового отрезка." })}</p>
+            </>
+          }
+        >
+          <div className="form-grid two-column">
+            <label>
+              <span className="field-label">{t({ en: "Current HR", ru: "Текущий пульс" })}</span>
+              <input
+                inputMode="numeric"
+                type="number"
+                min="40"
+                max="240"
+                value={heartRateInput}
+                onChange={(event) => setHeartRateInput(event.target.value)}
+                placeholder={`${easyMin}-${easyMax}`}
+              />
+            </label>
+            <label>
+              <span className="field-label">{t({ en: "Breathing", ru: "Дыхание" })}</span>
+              <select value={breathing} onChange={(event) => setBreathing(event.target.value as BreathingLevel)}>
+                {breathingLevelValues.map((value) => (
+                  <option key={value} value={value}>
+                    {breathingLabel(value, language)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-        <div className="form-grid two-column">
-          <label>
-            <span className="field-label">{t({ en: "Current HR", ru: "Текущий пульс" })}</span>
-            <input
-              inputMode="numeric"
-              type="number"
-              min="40"
-              max="240"
-              value={heartRateInput}
-              onChange={(event) => setHeartRateInput(event.target.value)}
-              placeholder={`${easyMin}-${easyMax}`}
-            />
-          </label>
-          <label>
-            <span className="field-label">{t({ en: "Breathing", ru: "Дыхание" })}</span>
-            <select value={breathing} onChange={(event) => setBreathing(event.target.value as BreathingLevel)}>
-              {breathingLevelValues.map((value) => (
-                <option key={value} value={value}>
-                  {breathingLabel(value, language)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="coach-callout">
-          <Gauge aria-hidden="true" size={24} />
-          <p>{currentPulseAdvice(currentHeartRate, breathing, easyMin, easyMax, language)}</p>
-        </div>
+          <div className="coach-callout">
+            <Gauge aria-hidden="true" size={24} />
+            <p>{currentPulseAdvice(currentHeartRate, breathing, easyMin, easyMax, language)}</p>
+          </div>
+        </CollapsibleSection>
       </section>
 
-      <section className="coach-band" aria-labelledby="coach-high-pulse-title">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">{t({ en: "Heart rate", ru: "Пульс" })}</div>
-            <h2 id="coach-high-pulse-title">{t({ en: "Why pulse gets high", ru: "Почему пульс высокий" })}</h2>
-          </div>
+      <section className="coach-band">
+        <CollapsibleSection
+          summary={
+            <>
+              <div className="eyebrow">{t({ en: "Heart rate", ru: "Пульс" })}</div>
+              <h2>{t({ en: "Why pulse gets high", ru: "Почему пульс высокий" })}</h2>
+            </>
+          }
+        >
           <p className="muted">
             {t({
               en: "If the same pace suddenly feels harder, look at context before blaming fitness.",
               ru: "Если тот же темп внезапно стал тяжелее, сначала проверь контекст, а не только форму."
             })}
           </p>
-        </div>
-        <CoachCardGrid cards={highPulseCards} />
+          <CoachCardGrid cards={highPulseCards} />
+        </CollapsibleSection>
       </section>
 
-      <section className="coach-band" aria-labelledby="coach-stopwatch-title">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">{t({ en: "No watch", ru: "Без часов" })}</div>
-            <h2 id="coach-stopwatch-title">{t({ en: "How to measure pulse", ru: "Как измерить пульс без часов" })}</h2>
-          </div>
+      <section className="coach-band">
+        <CollapsibleSection
+          summary={
+            <>
+              <div className="eyebrow">{t({ en: "No watch", ru: "Без часов" })}</div>
+              <h2>{t({ en: "How to measure pulse", ru: "Как измерить пульс без часов" })}</h2>
+            </>
+          }
+        >
           <p className="muted">
             {t({
               en: "A manual check is not perfect, but it is good enough to decide whether to walk or continue.",
               ru: "Ручной замер не идеален, но его достаточно, чтобы решить: идти шагом или продолжать."
             })}
           </p>
-        </div>
-        <CoachCardGrid cards={stopwatchCards} />
+          <CoachCardGrid cards={stopwatchCards} />
+        </CollapsibleSection>
       </section>
 
-      <section className="coach-band" aria-labelledby="coach-no-run-title">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">{t({ en: "Safety", ru: "Безопасность" })}</div>
-            <h2 id="coach-no-run-title">{t({ en: "When not to run", ru: "Когда не бежать" })}</h2>
-          </div>
+      <section className="coach-band">
+        <CollapsibleSection
+          summary={
+            <>
+              <div className="eyebrow">{t({ en: "Safety", ru: "Безопасность" })}</div>
+              <h2>{t({ en: "When not to run", ru: "Когда не бежать" })}</h2>
+            </>
+          }
+        >
           <p className="muted">
             {t({
               en: "The useful training choice is sometimes walking, rest, or medical help.",
               ru: "Иногда лучший тренировочный выбор — ходьба, отдых или медицинская помощь."
             })}
           </p>
-        </div>
-        <CoachCardGrid cards={doNotRunCards} />
+          <CoachCardGrid cards={doNotRunCards} />
+        </CollapsibleSection>
       </section>
 
       <section className="form-section">
-        <div className="section-heading">
-          <h2>{t({ en: "Pulse zones", ru: "Пульсовые зоны" })}</h2>
-          <p className="muted">{t({ en: "Based on your easy HR range in Settings.", ru: "На основе лёгкого диапазона пульса из настроек." })}</p>
-        </div>
-        <div className="zone-list">
-          {zones.map((zone) => (
-            <article className={`zone-row zone-${zone.tone}`} key={zone.name}>
-              <div>
-                <strong>{zone.name}</strong>
-                <span>{zone.range}</span>
-              </div>
-              <p>{zone.description}</p>
-            </article>
-          ))}
-        </div>
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>{t({ en: "Pulse zones", ru: "Пульсовые зоны" })}</h2>
+              <p className="muted">{t({ en: "Based on your easy HR range in Settings.", ru: "На основе лёгкого диапазона пульса из настроек." })}</p>
+            </>
+          }
+        >
+          <div className="zone-list">
+            {zones.map((zone) => (
+              <article className={`zone-row zone-${zone.tone}`} key={zone.name}>
+                <div>
+                  <strong>{zone.name}</strong>
+                  <span>{zone.range}</span>
+                </div>
+                <p>{zone.description}</p>
+              </article>
+            ))}
+          </div>
+        </CollapsibleSection>
       </section>
 
       <section className="form-section">
-        <div className="section-heading">
-          <h2>{t({ en: "Last session readout", ru: "Последняя тренировка" })}</h2>
-          <p className="muted">
-            {latestSession ? formatDateTime(latestSession.date, language) : t({ en: "No report yet", ru: "Отчёта пока нет" })}
-          </p>
-        </div>
-        <div className="coach-callout">
-          <Footprints aria-hidden="true" size={24} />
-          <p>{latestSessionCue(latestSession, language)}</p>
-        </div>
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>{t({ en: "Last session readout", ru: "Последняя тренировка" })}</h2>
+              <p className="muted">
+                {latestSession ? formatDateTime(latestSession.date, language) : t({ en: "No report yet", ru: "Отчёта пока нет" })}
+              </p>
+            </>
+          }
+        >
+          <div className="coach-callout">
+            <Footprints aria-hidden="true" size={24} />
+            <p>{latestSessionCue(latestSession, language)}</p>
+          </div>
+        </CollapsibleSection>
       </section>
 
       <section className="form-section">
-        <div className="section-heading">
-          <h2>Running development</h2>
-          <p className="muted">
-            В будущем это приложение будет прокачивать беговые характеристики и показатели
-            выносливости: пульс, темп, дыхание, устойчивость и восстановление.
-          </p>
-        </div>
-        <div className="coach-callout coach-callout-amber">
-          <Sparkles aria-hidden="true" size={24} />
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>Running development</h2>
+              <p className="muted">
+                В будущем это приложение будет прокачивать беговые характеристики и показатели
+                выносливости: пульс, темп, дыхание, устойчивость и восстановление.
+              </p>
+            </>
+          }
+        >
+          <div className="coach-callout coach-callout-amber">
+            <Sparkles aria-hidden="true" size={24} />
+            <p>
+              Персональная оценка сейчас показана как recommended-база. Следующий шаг - подбирать
+              рекомендации по твоим данным: профилю, отчётам тренировок, пульсу, темпу и восстановлению.
+            </p>
+          </div>
+        </CollapsibleSection>
+      </section>
+
+      <section className="form-section guide-copy">
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>Кардио-зона и скорость</h2>
+              <p className="muted">
+                Обычно под кардио-зоной имеют в виду аэробную Zone 2: примерно 60-75% от
+                максимального пульса или темп, при котором можно говорить короткими фразами,
+                а дыхание учащено, но контролируемое.
+              </p>
+            </>
+          }
+        >
+          <GuideTable headers={["Уровень", "Скорость в аэробной зоне", "Темп на 1 км"]} rows={aerobicSpeedRows} />
+
           <p>
-            Персональная оценка сейчас показана как recommended-база. Следующий шаг - подбирать
-            рекомендации по твоим данным: профилю, отчётам тренировок, пульсу, темпу и восстановлению.
+            Для хорошо тренированного любителя 12 км/ч в Zone 2 - это уже очень хороший уровень:
+            темп 5:00 мин/км при относительно низком пульсе. У нетренированного человека даже
+            7-9 км/ч могут быстро уводить пульс в 150-170, а у тренированного на этой скорости
+            пульс может быть как при быстрой ходьбе.
           </p>
-        </div>
+
+          <div className="coach-callout">
+            <Gauge aria-hidden="true" size={24} />
+            <p>
+              Ключевой показатель - не сама скорость, а сочетание: темп + пульс + дыхание +
+              устойчивость. Если 60 минут на 10 км/ч проходят с пульсом около 130-145 и
+              спокойным дыханием, это уже приличная аэробная база.
+            </p>
+          </div>
+        </CollapsibleSection>
       </section>
 
       <section className="form-section guide-copy">
-        <div className="section-heading">
-          <h2>Кардио-зона и скорость</h2>
-          <p className="muted">
-            Обычно под кардио-зоной имеют в виду аэробную Zone 2: примерно 60-75% от
-            максимального пульса или темп, при котором можно говорить короткими фразами,
-            а дыхание учащено, но контролируемое.
-          </p>
-        </div>
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>Recommended baseline</h2>
+              <p className="muted">
+                Текущий практичный ориентир - не 12 км/ч, а 40 минут движения в районе
+                {` ${practicalHrRange} `}без развала дыхания.
+              </p>
+            </>
+          }
+        >
+          <div className="badge-row">
+            <span className="badge">Recommended</span>
+            <span className="badge">Run-walk first</span>
+            <span className="badge">HR {easyMin}-{easyMax}</span>
+          </div>
 
-        <GuideTable headers={["Уровень", "Скорость в аэробной зоне", "Темп на 1 км"]} rows={aerobicSpeedRows} />
-
-        <p>
-          Для хорошо тренированного любителя 12 км/ч в Zone 2 - это уже очень хороший уровень:
-          темп 5:00 мин/км при относительно низком пульсе. У нетренированного человека даже
-          7-9 км/ч могут быстро уводить пульс в 150-170, а у тренированного на этой скорости
-          пульс может быть как при быстрой ходьбе.
-        </p>
-
-        <div className="coach-callout">
-          <Gauge aria-hidden="true" size={24} />
           <p>
-            Ключевой показатель - не сама скорость, а сочетание: темп + пульс + дыхание +
-            устойчивость. Если 60 минут на 10 км/ч проходят с пульсом около 130-145 и
-            спокойным дыханием, это уже приличная аэробная база.
+            Оценка сейчас такая: мышечно тело может быть готово к бегу, но кардио-база часто
+            отстаёт. Если при лёгком беге пульс быстро уходит к 160-170, главный лимит - не
+            ноги, а аэробная система.
           </p>
-        </div>
+
+          <GuideTable headers={["Цель", "Примерная скорость сейчас"]} rows={currentSpeedRows} />
+
+          <p>
+            12 км/ч - это темп 5:00 мин/км. Бежать так короткими отрезками и держать такой темп
+            в кардио-зоне - разные уровни. Сейчас это долгосрочный ориентир хорошей беговой
+            формы, а не ближайшая зона лёгкой работы.
+          </p>
+
+          <GuideTable headers={["Каденс для 12 км/ч", "Нужная длина шага"]} rows={strideRows} />
+
+          <p>
+            Для роста 185 см длина шага 1.1-1.25 м на темпе 5:00/км нормальна, но её не нужно
+            специально растягивать. Она должна вырасти за счёт скорости, упругости стопы,
+            работы бедра и техники. Искусственно длинный шаг часто перегружает колени, голени
+            и ахилл.
+          </p>
+        </CollapsibleSection>
       </section>
 
       <section className="form-section guide-copy">
-        <div className="section-heading">
-          <h2>Recommended baseline</h2>
-          <p className="muted">
-            Текущий практичный ориентир - не 12 км/ч, а 40 минут движения в районе
-            {` ${practicalHrRange} `}без развала дыхания.
-          </p>
-        </div>
-
-        <div className="badge-row">
-          <span className="badge">Recommended</span>
-          <span className="badge">Run-walk first</span>
-          <span className="badge">HR {easyMin}-{easyMax}</span>
-        </div>
-
-        <p>
-          Оценка сейчас такая: мышечно тело может быть готово к бегу, но кардио-база часто
-          отстаёт. Если при лёгком беге пульс быстро уходит к 160-170, главный лимит - не
-          ноги, а аэробная система.
-        </p>
-
-        <GuideTable headers={["Цель", "Примерная скорость сейчас"]} rows={currentSpeedRows} />
-
-        <p>
-          12 км/ч - это темп 5:00 мин/км. Бежать так короткими отрезками и держать такой темп
-          в кардио-зоне - разные уровни. Сейчас это долгосрочный ориентир хорошей беговой
-          формы, а не ближайшая зона лёгкой работы.
-        </p>
-
-        <GuideTable headers={["Каденс для 12 км/ч", "Нужная длина шага"]} rows={strideRows} />
-
-        <p>
-          Для роста 185 см длина шага 1.1-1.25 м на темпе 5:00/км нормальна, но её не нужно
-          специально растягивать. Она должна вырасти за счёт скорости, упругости стопы,
-          работы бедра и техники. Искусственно длинный шаг часто перегружает колени, голени
-          и ахилл.
-        </p>
-      </section>
-
-      <section className="form-section guide-copy">
-        <div className="section-heading">
-          <h2>Тренировочная прогрессия</h2>
-          <p className="muted">
-            Начинай не с обычного непрерывного бега, а с бег-шага по пульсу. Цель - научить
-            сердце, дыхание, связки и голени выдерживать регулярную аэробную работу.
-          </p>
-        </div>
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>Тренировочная прогрессия</h2>
+              <p className="muted">
+                Начинай не с обычного непрерывного бега, а с бег-шага по пульсу. Цель - научить
+                сердце, дыхание, связки и голени выдерживать регулярную аэробную работу.
+              </p>
+            </>
+          }
+        >
 
         <details className="guide-details">
           <summary>Первые 4 недели</summary>
@@ -1094,38 +1158,44 @@ export function CoachPage() {
             </div>
           </div>
         </details>
+        </CollapsibleSection>
       </section>
 
       <section className="form-section guide-copy">
-        <div className="section-heading">
-          <h2>Долгосрочный ориентир</h2>
-          <p className="muted">
-            12 км/ч в низкой кардио-зоне - не ближайшая цель, а ориентир сильной аэробной
-            формы.
-          </p>
-        </div>
-        <div className="guide-timeline">
-          <div>
-            <CalendarDays aria-hidden="true" size={22} />
-            <strong>2-3 месяца</strong>
-            <span>уверенный бег-шаг или лёгкий непрерывный бег 30-40 минут</span>
+        <CollapsibleSection
+          summary={
+            <>
+              <h2>Долгосрочный ориентир</h2>
+              <p className="muted">
+                12 км/ч в низкой кардио-зоне - не ближайшая цель, а ориентир сильной аэробной
+                формы.
+              </p>
+            </>
+          }
+        >
+          <div className="guide-timeline">
+            <div>
+              <CalendarDays aria-hidden="true" size={22} />
+              <strong>2-3 месяца</strong>
+              <span>уверенный бег-шаг или лёгкий непрерывный бег 30-40 минут</span>
+            </div>
+            <div>
+              <Route aria-hidden="true" size={22} />
+              <strong>4-6 месяцев</strong>
+              <span>примерно 8-10 км/ч при более контролируемом пульсе</span>
+            </div>
+            <div>
+              <TrendingUp aria-hidden="true" size={22} />
+              <strong>9-12 месяцев</strong>
+              <span>12 км/ч как рабочая скорость коротких или средних отрезков</span>
+            </div>
+            <div>
+              <BookOpen aria-hidden="true" size={22} />
+              <strong>12-24 месяца</strong>
+              <span>цель: 12 км/ч как аэробный темп на 40-60 минут</span>
+            </div>
           </div>
-          <div>
-            <Route aria-hidden="true" size={22} />
-            <strong>4-6 месяцев</strong>
-            <span>примерно 8-10 км/ч при более контролируемом пульсе</span>
-          </div>
-          <div>
-            <TrendingUp aria-hidden="true" size={22} />
-            <strong>9-12 месяцев</strong>
-            <span>12 км/ч как рабочая скорость коротких или средних отрезков</span>
-          </div>
-          <div>
-            <BookOpen aria-hidden="true" size={22} />
-            <strong>12-24 месяца</strong>
-            <span>цель: 12 км/ч как аэробный темп на 40-60 минут</span>
-          </div>
-        </div>
+        </CollapsibleSection>
       </section>
     </div>
   );

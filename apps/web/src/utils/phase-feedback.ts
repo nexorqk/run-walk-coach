@@ -8,18 +8,18 @@ type WindowWithWebkitAudio = Window &
 let audioContext: AudioContext | undefined;
 
 const phaseTones: Record<WorkoutPhase, number[]> = {
-  WARMUP: [392, 523],
+  WARMUP: [523, 659, 784],
   RUN: [660, 880, 988],
-  WALK: [523, 392],
-  COOLDOWN: [440, 330],
+  WALK: [440, 554, 659],
+  COOLDOWN: [523, 440, 349],
   DONE: [523, 659, 784]
 };
 
 const phaseVibrations: Record<WorkoutPhase, number[]> = {
-  WARMUP: [60, 35, 60],
+  WARMUP: [80, 40, 80],
   RUN: [85, 35, 85],
-  WALK: [70],
-  COOLDOWN: [60, 45, 60],
+  WALK: [80, 40, 80],
+  COOLDOWN: [80, 40, 80],
   DONE: [100, 45, 100]
 };
 
@@ -51,9 +51,9 @@ export function primePhaseAudio() {
 
 function scheduleTone(context: AudioContext, phase: WorkoutPhase) {
   const tones = phaseTones[phase];
-  const duration = phase === "RUN" ? 0.08 : 0.1;
-  const gap = phase === "RUN" ? 0.075 : 0.095;
-  const volume = phase === "RUN" ? 0.075 : 0.055;
+  const duration = 0.1;
+  const gap = 0.09;
+  const volume = 0.075;
   const startAt = context.currentTime + 0.025;
 
   tones.forEach((frequency, index) => {
@@ -62,7 +62,7 @@ function scheduleTone(context: AudioContext, phase: WorkoutPhase) {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
 
-    oscillator.type = phase === "RUN" ? "triangle" : "sine";
+    oscillator.type = "triangle";
     oscillator.frequency.setValueAtTime(frequency, toneStart);
     gain.gain.setValueAtTime(0.0001, toneStart);
     gain.gain.exponentialRampToValueAtTime(volume, toneStart + 0.015);

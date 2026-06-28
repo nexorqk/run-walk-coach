@@ -1,4 +1,4 @@
-import { buildWorkoutTimeline, formatTime, type AuthProviders } from "@run-walk-coach/shared";
+import type { AuthProviders } from "@run-walk-coach/shared";
 import { AlertTriangle, Download, FileJson, Languages, LogIn, Monitor, Moon, Save, ShieldCheck, Sun, Trash2, Upload } from "lucide-react";
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -7,8 +7,7 @@ import {
   getAuthProviders,
   getServerExportJson,
   googleLoginUrl,
-  updateProfile,
-  updateWorkoutTemplate
+  updateProfile
 } from "../api/client.js";
 import { showToast } from "../components/Toaster.js";
 import { retryPendingSessions } from "../sync/sync-sessions.js";
@@ -21,27 +20,21 @@ import {
   withExportPreferences,
   importBrowserDataExport
 } from "../utils/data-portability.js";
-import { localizeTemplateName, useLanguage } from "../utils/language.js";
+import { useLanguage } from "../utils/language.js";
 import { getStoredTheme, setStoredTheme, type AppTheme } from "../utils/theme.js";
 
 export function SettingsPage() {
   const profile = useAppStore((state) => state.profile);
   const templates = useAppStore((state) => state.templates);
-  const recommendation = useAppStore((state) => state.recommendation);
   const serverSyncEnabled = useAppStore((state) => state.serverSyncEnabled);
   const loadInitialData = useAppStore((state) => state.loadInitialData);
   const updateLocalProfile = useAppStore((state) => state.updateLocalProfile);
-  const updateLocalWorkoutTemplate = useAppStore((state) => state.updateLocalWorkoutTemplate);
   const setWorkoutDraft = useAppStore((state) => state.setWorkoutDraft);
   const { language, setLanguage, t } = useLanguage();
   const [heightCm, setHeightCm] = useState(185);
   const [goalSpeedKmh, setGoalSpeedKmh] = useState(12);
   const [easyHrMin, setEasyHrMin] = useState(130);
   const [easyHrMax, setEasyHrMax] = useState(150);
-  const [warmupSec, setWarmupSec] = useState("600");
-  const [runSec, setRunSec] = useState("30");
-  const [walkSec, setWalkSec] = useState("90");
-  const [cooldownSec, setCooldownSec] = useState("300");
   const [status, setStatus] = useState("");
   const [authStatus, setAuthStatus] = useState("");
   const [authProviders, setAuthProviders] = useState<AuthProviders>();
@@ -51,31 +44,6 @@ export function SettingsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
-  const currentTemplate = recommendation?.template;
-  const parsedWarmupSec = Number(warmupSec);
-  const parsedRunSec = Number(runSec);
-  const parsedWalkSec = Number(walkSec);
-  const parsedCooldownSec = Number(cooldownSec);
-  const hasValidTiming =
-    warmupSec.trim() !== "" &&
-    runSec.trim() !== "" &&
-    walkSec.trim() !== "" &&
-    cooldownSec.trim() !== "" &&
-    Number.isFinite(parsedWarmupSec) &&
-    Number.isFinite(parsedRunSec) &&
-    Number.isFinite(parsedWalkSec) &&
-    Number.isFinite(parsedCooldownSec);
-  const editedTemplate = currentTemplate
-    ? {
-        ...currentTemplate,
-        warmupSec: hasValidTiming ? parsedWarmupSec : currentTemplate.warmupSec,
-        runSec: hasValidTiming ? parsedRunSec : currentTemplate.runSec,
-        walkSec: hasValidTiming ? parsedWalkSec : currentTemplate.walkSec,
-        cooldownSec: hasValidTiming ? parsedCooldownSec : currentTemplate.cooldownSec
-      }
-    : undefined;
-  const totalDurationSec =
-    editedTemplate && hasValidTiming ? buildWorkoutTimeline(editedTemplate).totalDurationSec : undefined;
 
   useEffect(() => {
     if (profile) {
@@ -85,15 +53,6 @@ export function SettingsPage() {
       setEasyHrMax(profile.easyHrMax);
     }
   }, [profile]);
-
-  useEffect(() => {
-    if (currentTemplate) {
-      setWarmupSec(String(currentTemplate.warmupSec));
-      setRunSec(String(currentTemplate.runSec));
-      setWalkSec(String(currentTemplate.walkSec));
-      setCooldownSec(String(currentTemplate.cooldownSec));
-    }
-  }, [currentTemplate]);
 
   useEffect(() => {
     void getAuthProviders()
@@ -135,28 +94,12 @@ export function SettingsPage() {
         easyHrMin,
         easyHrMax
       };
-      const timingPayload = {
-        warmupSec: parsedWarmupSec,
-        runSec: parsedRunSec,
-        walkSec: parsedWalkSec,
-        cooldownSec: parsedCooldownSec
-      };
 
       if (serverSyncEnabled) {
-        const updates: Promise<unknown>[] = [updateProfile(profilePayload)];
-
-        if (currentTemplate) {
-          updates.push(updateWorkoutTemplate(currentTemplate.id, timingPayload));
-        }
-
-        await Promise.all(updates);
+        await updateProfile(profilePayload);
         await loadInitialData();
       } else {
         updateLocalProfile(profilePayload);
-
-        if (currentTemplate) {
-          await updateLocalWorkoutTemplate(currentTemplate.id, timingPayload);
-        }
       }
 
       setStatus(serverSyncEnabled ? t({ en: "Saved to server", ru: "Сохранено на сервер" }) : t({ en: "Saved in this browser", ru: "Сохранено в этом браузере" }));
@@ -171,14 +114,6 @@ export function SettingsPage() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const normalizeTimingInput = (value: string, setter: (value: string) => void) => {
-    if (value.trim() === "") {
-      return;
-    }
-
-    setter(String(Number(value)));
   };
 
   const changeTheme = (nextTheme: AppTheme) => {
@@ -470,76 +405,6 @@ export function SettingsPage() {
             onChange={(event) => setEasyHrMax(Number(event.target.value))}
           />
         </label>
-      </section>
-
-      <section className="form-section">
-        <div className="section-heading">
-          <h2>{t({ en: "Workout timing", ru: "Время тренировки" })}</h2>
-          <p className="muted">{currentTemplate ? localizeTemplateName(currentTemplate.name, language) : t({ en: "Loading workout", ru: "Загрузка тренировки" })}</p>
-        </div>
-
-        <div className="form-grid two-column">
-          <label>
-            <span className="field-label">{t({ en: "Warmup, sec", ru: "Разминка, сек" })}</span>
-            <input
-              inputMode="numeric"
-              type="number"
-              min="0"
-              max="3600"
-              step="1"
-              required
-              value={warmupSec}
-              onBlur={() => normalizeTimingInput(warmupSec, setWarmupSec)}
-              onChange={(event) => setWarmupSec(event.target.value)}
-            />
-          </label>
-          <label>
-            <span className="field-label">{t({ en: "Run, sec", ru: "Бег, сек" })}</span>
-            <input
-              inputMode="numeric"
-              type="number"
-              min="1"
-              max="3600"
-              step="1"
-              required
-              value={runSec}
-              onBlur={() => normalizeTimingInput(runSec, setRunSec)}
-              onChange={(event) => setRunSec(event.target.value)}
-            />
-          </label>
-          <label>
-            <span className="field-label">{t({ en: "Walk, sec", ru: "Шаг, сек" })}</span>
-            <input
-              inputMode="numeric"
-              type="number"
-              min="0"
-              max="3600"
-              step="1"
-              required
-              value={walkSec}
-              onBlur={() => normalizeTimingInput(walkSec, setWalkSec)}
-              onChange={(event) => setWalkSec(event.target.value)}
-            />
-          </label>
-          <label>
-            <span className="field-label">{t({ en: "Cooldown, sec", ru: "Заминка, сек" })}</span>
-            <input
-              inputMode="numeric"
-              type="number"
-              min="0"
-              max="3600"
-              step="1"
-              required
-              value={cooldownSec}
-              onBlur={() => normalizeTimingInput(cooldownSec, setCooldownSec)}
-              onChange={(event) => setCooldownSec(event.target.value)}
-            />
-          </label>
-        </div>
-
-        {totalDurationSec !== undefined ? (
-          <p className="muted">{t({ en: "Total time", ru: "Всего времени" })}: {formatTime(totalDurationSec)}</p>
-        ) : null}
       </section>
 
       <section className="form-section">

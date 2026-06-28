@@ -364,6 +364,13 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.metric input {
+  min-height: 44px;
+  padding: 8px 10px;
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .bottom-nav {
   position: fixed;
   right: 0;
@@ -539,6 +546,48 @@ h2 {
 .coach-band {
   display: grid;
   gap: 12px;
+}
+
+.collapsible-section summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+  user-select: none;
+}
+
+.collapsible-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-section summary::after {
+  content: "";
+  margin-left: auto;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.collapsible-section[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.collapsible-section summary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: 8px;
+}
+
+.collapsible-section .collapsible-body {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
 }
 
 .coach-card-grid {
