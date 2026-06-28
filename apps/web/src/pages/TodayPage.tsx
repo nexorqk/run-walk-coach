@@ -1,5 +1,5 @@
 import { buildWorkoutTimeline, formatTime } from "@run-walk-coach/shared";
-import { Play } from "lucide-react";
+import { Play, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { updateWorkoutTemplate } from "../api/client.js";
@@ -173,6 +173,23 @@ export function TodayPage() {
           <span className="badge">{progressionActionLabel(recommendation?.action, language)}</span>
         </div>
         <p className="muted">{localizeProgressionReason(recommendation?.reason, language)}</p>
+        {recommendation?.adaptations && recommendation.adaptations.length > 0 ? (
+          <div className="coach-callout">
+            <Sparkles aria-hidden="true" size={20} />
+            <p>
+              {recommendation.adaptations.map((a) => {
+                const sign = a.delta > 0 ? "+" : "";
+                const field = a.field === "runSec"
+                  ? t({ en: "run", ru: "бег" })
+                  : a.field === "walkSec"
+                    ? t({ en: "walk", ru: "шаг" })
+                    : t({ en: "repeats", ru: "повторы" });
+                const unit = a.field === "repeats" ? "" : "s";
+                return `${field} ${sign}${a.delta}${unit}`;
+              }).join(", ")}
+            </p>
+          </div>
+        ) : null}
         <button className="primary-action" type="button" disabled={isSaving || !hasValidTiming} onClick={() => void startWorkout()}>
           <Play aria-hidden="true" size={28} fill="currentColor" />
           {isSaving ? t({ en: "Saving...", ru: "Сохранение..." }) : t({ en: "Start workout", ru: "Начать тренировку" })}

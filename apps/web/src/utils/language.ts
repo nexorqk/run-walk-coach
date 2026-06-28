@@ -133,7 +133,8 @@ export function progressionActionLabel(action: ProgressionAction | undefined, la
   const labels: Record<ProgressionAction, Copy> = {
     progress: { en: "progress", ru: "прогресс" },
     repeat: { en: "repeat", ru: "повтор" },
-    regress: { en: "regress", ru: "снизить" }
+    regress: { en: "regress", ru: "снизить" },
+    adjust: { en: "adapted", ru: "адаптировано" }
   };
 
   return text(language, labels[action]);

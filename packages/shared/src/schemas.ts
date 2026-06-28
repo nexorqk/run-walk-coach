@@ -34,7 +34,7 @@ export const painTypeValues = [
   "OTHER"
 ] as const;
 
-export const progressionActionValues = ["progress", "repeat", "regress"] as const;
+export const progressionActionValues = ["progress", "repeat", "regress", "adjust"] as const;
 
 export const WorkoutTypeSchema = z.enum(workoutTypeValues);
 export const BreathingLevelSchema = z.enum(breathingLevelValues);
@@ -276,10 +276,24 @@ export const UserRuleSchema = z.object({
   updatedAt: z.string()
 });
 
+export const AdaptationDetailSchema = z.object({
+  field: z.enum(["runSec", "walkSec", "repeats"]),
+  delta: z.number().int(),
+  reasonCode: z.string()
+});
+
 export const ProgressionResponseSchema = z.object({
   action: ProgressionActionSchema,
   template: WorkoutTemplateSchema,
-  reason: z.string()
+  reason: z.string(),
+  adaptations: z.array(AdaptationDetailSchema).optional(),
+  sessionData: z.object({
+    difficulty: z.number().int().min(1).max(10),
+    pain: PainTypeSchema,
+    breathing: BreathingLevelSchema,
+    maxHr: z.number().int().nullable(),
+    completed: z.boolean()
+  }).optional()
 });
 
 export const AnalyticsSummarySchema = z.object({
@@ -296,6 +310,7 @@ export type BreathingLevel = z.infer<typeof BreathingLevelSchema>;
 export type HeartRateZone = z.infer<typeof HeartRateZoneSchema>;
 export type PainType = z.infer<typeof PainTypeSchema>;
 export type ProgressionAction = z.infer<typeof ProgressionActionSchema>;
+export type AdaptationDetail = z.infer<typeof AdaptationDetailSchema>;
 export type UserProfile = z.infer<typeof UserProfileSchema>;
 export type UpdateUserProfile = z.infer<typeof UpdateUserProfileSchema>;
 export type WorkoutTemplate = z.infer<typeof WorkoutTemplateSchema>;

@@ -104,7 +104,9 @@ vi.mock("../src/progression.js", () => ({
   getNextWorkoutSuggestion: vi.fn().mockResolvedValue({
     action: "repeat",
     template: mockTemplate,
-    reason: "Repeat this level."
+    reason: "Repeat this level.",
+    adaptations: [],
+    sessionData: { difficulty: 5, pain: "NONE", breathing: "MEDIUM", maxHr: null, completed: true }
   })
 }));
 

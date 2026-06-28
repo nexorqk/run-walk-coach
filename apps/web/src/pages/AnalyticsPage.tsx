@@ -1,5 +1,5 @@
 import { formatTime, type AnalyticsSummary, type WorkoutSession } from "@run-walk-coach/shared";
-import { Activity, AlertTriangle, HeartPulse, Percent, RefreshCcw, TrendingUp } from "lucide-react";
+import { Activity, AlertTriangle, HeartPulse, Percent, RefreshCcw, Sparkles, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getAnalyticsSummary, getSessions } from "../api/client.js";
 import { WorkoutSummary } from "../components/WorkoutSummary.js";
@@ -391,6 +391,23 @@ export function AnalyticsPage() {
             <div className="eyebrow">{t({ en: "Next", ru: "Дальше" })}</div>
             <h2>{localizeTemplateName(summary.next.template.name, language)}</h2>
             <p className="muted">{localizeProgressionReason(summary.next.reason, language)}</p>
+            {summary.next.adaptations && summary.next.adaptations.length > 0 ? (
+              <div className="coach-callout">
+                <Sparkles aria-hidden="true" size={20} />
+                <p>
+                  {summary.next.adaptations.map((a) => {
+                    const sign = a.delta > 0 ? "+" : "";
+                    const field = a.field === "runSec"
+                      ? t({ en: "run", ru: "бег" })
+                      : a.field === "walkSec"
+                        ? t({ en: "walk", ru: "шаг" })
+                        : t({ en: "repeats", ru: "повторы" });
+                    const unit = a.field === "repeats" ? "" : "s";
+                    return `${field} ${sign}${a.delta}${unit}`;
+                  }).join(", ")}
+                </p>
+              </div>
+            ) : null}
           </section>
 
           <WorkoutSummary template={summary.next.template} />
