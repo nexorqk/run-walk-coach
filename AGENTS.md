@@ -135,7 +135,7 @@ src/bootstrap.ts    — Plugin registration, route setup
 src/routes.ts       — API route definitions
 src/auth.ts         — Google OAuth + session cookie
 src/env.ts          — Environment variable validation
-src/progression.ts  — Run-walk progression rules
+src/progression.ts  — Adaptive workout engine (granular timing adjustments)
 src/security.ts     — CORS, rate limiting, origin checks
 src/prisma.ts       — Prisma client singleton
 src/maintenance.ts  — Cleanup expired sessions
@@ -176,6 +176,52 @@ Prefix: `/api`. All endpoints:
 - `DELETE /api/sessions/:id` — delete session
 - `GET /api/analytics/summary` — weekly analytics summary
 - `GET /api/export/json` — export all user data as JSON
+
+### Adaptive Workout Engine
+
+The progression engine (`src/progression.ts`) makes **granular timing adjustments** instead of just switching between fixed template levels. After each session, it analyzes difficulty, pain, breathing, heart rate, and completion to adjust the next workout.
+
+**Adjustment rules:**
+
+| Condition | Adjustment |
+|-----------|------------|
+| Easy session (difficulty ≤4, EASY breathing) | run +15s |
+| Controlled session (difficulty 5-6, EASY/MEDIUM) | run +15s |
+| High difficulty (≥8) | run −15s |
+| Very hard breathing | walk +10s |
+| High heart rate (≥170) | walk +10s |
+| Very high heart rate (≥180) | walk +10s, run −15s |
+| Elevated heart rate (160-169) | walk +10s |
+| Incomplete workout | repeats −1 |
+| Incomplete + hard (≥7) | repeats −1, run −15s |
+| Pain | regress level |
+| Two successful sessions in a row | progress level |
+
+**Response shape** (`GET /api/progression/next`):
+
+```ts
+{
+  action: "progress" | "repeat" | "regress" | "adjust",
+  template: WorkoutTemplate,
+  reason: string,           // personalized with session data
+  adaptations?: Array<{     // granular changes applied
+    field: "runSec" | "walkSec" | "repeats",
+    delta: number,
+    reasonCode: string
+  }>,
+  sessionData?: {           // last session data used for decision
+    difficulty: number,
+    pain: PainType,
+    breathing: BreathingLevel,
+    maxHr: number | null,
+    completed: boolean
+  }
+}
+```
+
+**Clamp limits:** runSec 15–1800, walkSec 0–300, repeats 1–50.
+
+The engine is in `apps/api/src/progression.ts`. Tests: `apps/api/test/progression.test.ts`.
 
 ## Shared (`packages/shared`)
 

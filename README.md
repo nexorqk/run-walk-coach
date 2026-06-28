@@ -88,7 +88,9 @@ pnpm db:seed
 
 ## Current Capabilities
 
-- Daily workout recommendation on `/today`
+- Daily workout recommendation on `/today` with personalized adaptation
+- Adaptive workout engine: granular run/walk/repeats adjustments after each session
+- Editable workout timing on Today page (warmup, run, walk, cooldown)
 - Full-screen run/walk timer
 - Session report with difficulty, breathing, pain, heart-rate fields, and notes
 - Offline-first save to IndexedDB
@@ -96,12 +98,11 @@ pnpm db:seed
 - Retry sync from app startup and History after Google login
 - Idempotent server sync with `clientSessionId`
 - History and weekly analytics
-- Editable workout timing in Settings: warmup, run, walk, cooldown
-- Coach screen with pulse zones, pacing cue, and running guidance
+- Collapsible Coach screen with pulse zones, pacing cue, and running guidance
 - Google login for saving progress on the server
 - Delete server and local progress from Settings
 - JSON export endpoint
-- Privacy page at `/privacy.html`
+- Privacy page at `/data-privacy`
 
 ## Auth And Storage
 
@@ -121,16 +122,29 @@ Google OAuth is the only server-sync path. After Google login, the API stores a 
 
 ## Progression Rules
 
-The backend suggests the next template from recent sessions:
+The backend uses an **adaptive workout engine** that makes granular timing adjustments based on session feedback. After each workout, it analyzes difficulty, pain, breathing, heart rate, and completion to adjust the next workout.
 
-- Pain reported: repeat or regress.
-- Difficulty `>= 8`: repeat.
-- Breathing `VERY_HARD`: repeat.
-- Max HR `>= 170`: repeat.
-- Two successful sessions in a row at the current level: progress.
-- Otherwise: repeat.
+**Adjustment rules:**
 
-A successful session has no pain, difficulty `<= 6`, breathing `EASY`, `MEDIUM`, or `HARD`, and max HR missing or `< 160`.
+| Condition | Adjustment |
+|-----------|------------|
+| Easy session (difficulty ≤4, EASY breathing) | run +15s |
+| Controlled session (difficulty 5-6, EASY/MEDIUM) | run +15s |
+| High difficulty (≥8) | run −15s |
+| Very hard breathing | walk +10s |
+| High heart rate (≥170) | walk +10s |
+| Very high heart rate (≥180) | walk +10s, run −15s |
+| Elevated heart rate (160-169) | walk +10s |
+| Incomplete workout | repeats −1 |
+| Incomplete + hard (≥7) | repeats −1, run −15s |
+| Pain | regress level |
+| Two successful sessions in a row | progress level |
+
+The response includes personalized reasons with actual session data (e.g. "difficulty was 6/10, no pain, so run +15s") and a list of specific adaptations applied.
+
+Clamp limits: runSec 15–1800, walkSec 0–300, repeats 1–50.
+
+A successful session has no pain, difficulty `<= 6`, breathing `EASY`, `MEDIUM`, or `HARD`, max HR missing or `< 160`, and is completed.
 
 ## Production Notes
 
