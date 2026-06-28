@@ -23,14 +23,12 @@ ops/systemd/       — Systemd service/timer units
 ## Commands
 
 ```bash
-make setup              # First-time setup (pnpm install, docker up, migrate, seed)
-make start              # Start dev servers (API + Web)
 make check              # Typecheck + tests
-make build              # Production build all packages
 make up                 # Docker compose up --build
 make down               # Docker compose down
 make logs               # Docker compose logs -f
 make health             # curl API readiness
+make clean              # Remove build output
 
 pnpm dev                # Start both API + Web dev servers
 pnpm dev:web            # Web only
@@ -56,7 +54,7 @@ src/App.tsx             — Router, layout shell, guards, onboarding gate
 src/app.css             — Tailwind CSS v4 entry + @theme tokens
 src/styles.css          — All component/page CSS (keep here, not in Tailwind)
 src/pages/              — Route-level page components
-src/components/         — Shared components (ReadinessCheck, WeeklyPlan, WorkoutSummary)
+src/components/         — Shared components (ReadinessCheck, WeeklyPlan, WorkoutSummary, Toaster)
 src/components/ui/      — shadcn/ui primitives (select, slider, add more here)
 src/lib/utils.ts        — cn() utility (clsx + tailwind-merge)
 src/store/app-store.ts  — Zustand global store
@@ -154,16 +152,30 @@ pnpm db:seed       # Seed default templates
 
 ### API Endpoints
 
-Prefix: `/api`. Key endpoints:
+Prefix: `/api`. All endpoints:
+- `GET /api/health` — basic health check
 - `GET /api/health/live` — liveness
 - `GET /api/health/ready` — readiness (checks DB)
+- `GET /api/metrics` — runtime metrics (dev only)
+- `POST /api/client-errors` — client error logging (rate-limited)
 - `GET /api/profile` — user profile (requires auth)
-- `GET /api/workout-templates` — all templates
-- `GET /api/next-progression` — next workout recommendation
-- `POST /api/sessions` — save session report
-- `GET /api/sessions` — session history
-- `POST /api/auth/google` — Google OAuth flow
+- `PATCH /api/profile` — update user profile (requires auth)
+- `DELETE /api/profile` — delete user account (requires auth)
 - `GET /api/auth/providers` — available auth providers
+- `GET /api/auth/google/start` — begin Google OAuth flow (rate-limited)
+- `GET /api/auth/google/callback` — Google OAuth callback (rate-limited)
+- `POST /api/auth/logout` — logout current session
+- `GET /api/workout-templates` — all templates
+- `GET /api/workout-templates/current` — current suggested template
+- `PATCH /api/workout-templates/:id` — update workout template
+- `GET /api/progression/next` — next workout recommendation
+- `GET /api/sessions` — session history
+- `POST /api/sessions` — save session report (idempotent via clientSessionId)
+- `GET /api/sessions/:id` — single session
+- `PATCH /api/sessions/:id` — update session
+- `DELETE /api/sessions/:id` — delete session
+- `GET /api/analytics/summary` — weekly analytics summary
+- `GET /api/export/json` — export all user data as JSON
 
 ## Shared (`packages/shared`)
 
